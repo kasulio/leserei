@@ -58,3 +58,23 @@ test("skips apostrophe contractions", () => {
   const result = italicCleanup(book(["don't*word*"]), opts);
   expect(result.chapters[0]!.lines[0]!).toBe("don't*word*");
 });
+
+test("keeps punctuation glued after closing emphasis", () => {
+  const result = italicCleanup(book(["*word*. Next *word*, rest"]), opts);
+  expect(result.chapters[0]!.lines[0]!).toBe("*word*. Next *word*, rest");
+});
+
+test("spaces multiple glued spans on one line", () => {
+  const result = italicCleanup(book(["a*one*and**two**b"]), opts);
+  expect(result.chapters[0]!.lines[0]!).toBe("a *one* and **two** b");
+});
+
+test("spaces emphasis after glued punctuation", () => {
+  const result = italicCleanup(
+    book(['the final toast.* "To my brave brothers!*']),
+    opts,
+  );
+  expect(result.chapters[0]!.lines[0]!).toBe(
+    'the final toast. *"To my brave brothers!*',
+  );
+});

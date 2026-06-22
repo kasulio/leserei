@@ -249,3 +249,22 @@ test("processed preset preserves scene break text", () => {
   );
   expect(result.chapters[0]!.lines[0]!).toBe("* * *");
 });
+
+test("processed preset spaces emphasis after punctuation", () => {
+  const book = extractBook(
+    spine(
+      `<html><body><p>the final toast.<i class="calibre5"> "To my brave brothers!</i></p></body></html>`,
+    ),
+    "",
+    "markdown",
+  );
+
+  const result = runPipeline(
+    book,
+    PRESETS.find((p) => p.id === "processed")!.options,
+    "markdown",
+  );
+  expect(result.chapters[0]!.lines[0]!).toBe(
+    'the final toast. *"To my brave brothers!*',
+  );
+});
