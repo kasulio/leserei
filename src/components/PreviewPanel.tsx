@@ -87,7 +87,7 @@ export function PreviewPanel({
             value={displayText}
             onChange={(e) => onDisplayTextChange(e.target.value)}
             spellCheck={false}
-            className="min-h-0 w-full flex-1 resize-none whitespace-pre-wrap border-none bg-transparent font-[inherit] text-sm text-text leading-relaxed focus:outline-none"
+            className="min-h-0 w-full flex-1 resize-none whitespace-pre-wrap border-none bg-transparent font-[inherit] text-sm text-text leading-normal focus:outline-none"
             aria-label="Book text"
           />
         ) : (
