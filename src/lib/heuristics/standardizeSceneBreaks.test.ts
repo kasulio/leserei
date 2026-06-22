@@ -1,17 +1,11 @@
 import { expect, test } from "bun:test";
 
-import type { Book, Options } from "../types";
 import {
   isSceneBreakLine,
   SCENE_BREAK,
   standardizeSceneBreaks,
 } from "./standardizeSceneBreaks";
-
-function book(lines: string[]): Book {
-  return { title: "", chapters: [{ title: "", lines }] };
-}
-
-const opts = {} as Options;
+import { opts, paragraphs, render } from "./testUtils";
 
 test("isSceneBreakLine recognises common dividers", () => {
   for (const line of [
@@ -49,40 +43,38 @@ test("isSceneBreakLine rejects prose-like lines", () => {
   }
 });
 
-test("normalises asterisk variants", () => {
+test("normalises asterisk variants to scene break blocks", () => {
   const result = standardizeSceneBreaks(
-    book(["***", "text", "*  *  *", "* * * *"]),
+    paragraphs(["***", "text", "*  *  *", "* * * *"]),
     opts,
   );
-  expect(result.chapters[0]!.lines).toEqual([
-    SCENE_BREAK,
-    "text",
-    SCENE_BREAK,
-    SCENE_BREAK,
-  ]);
+  expect(render(result)).toBe(
+    `${SCENE_BREAK}\n\ntext\n\n${SCENE_BREAK}\n\n${SCENE_BREAK}`,
+  );
 });
 
 test("normalises four escaped asterisks", () => {
-  const result = standardizeSceneBreaks(book([String.raw`\* \* \* \*`]), opts);
-  expect(result.chapters[0]!.lines[0]!).toBe(SCENE_BREAK);
+  const result = standardizeSceneBreaks(
+    paragraphs([String.raw`\* \* \* \*`]),
+    opts,
+  );
+  expect(render(result)).toBe(SCENE_BREAK);
 });
 
 test("normalises dash and ellipsis dividers", () => {
-  const result = standardizeSceneBreaks(book(["---", "...", "-----"]), opts);
-  expect(result.chapters[0]!.lines).toEqual([
-    SCENE_BREAK,
-    SCENE_BREAK,
-    SCENE_BREAK,
-  ]);
+  const result = standardizeSceneBreaks(
+    paragraphs(["---", "...", "-----"]),
+    opts,
+  );
+  expect(render(result)).toBe(
+    `${SCENE_BREAK}\n\n${SCENE_BREAK}\n\n${SCENE_BREAK}`,
+  );
 });
 
-test("normalises escaped markdown dividers", () => {
-  const result = standardizeSceneBreaks(book(["\\* \\* \\*"]), opts);
-  expect(result.chapters[0]!.lines[0]!).toBe(SCENE_BREAK);
-});
-
-test("leaves non-divider lines unchanged", () => {
-  const lines = ["Chapter opener.", "She looked away..."];
-  const result = standardizeSceneBreaks(book(lines), opts);
-  expect(result.chapters[0]!.lines).toEqual(lines);
+test("leaves non-divider paragraphs unchanged", () => {
+  const result = standardizeSceneBreaks(
+    paragraphs(["Chapter opener.", "She looked away..."]),
+    opts,
+  );
+  expect(render(result)).toBe("Chapter opener.\n\nShe looked away...");
 });

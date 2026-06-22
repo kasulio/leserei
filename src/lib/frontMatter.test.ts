@@ -1,9 +1,10 @@
 import { expect, test } from "bun:test";
 
 import type { SpineItem } from "./epub";
-import { extractBook } from "./extract";
+import { extractDoc } from "./extract";
 import { filterSpine, isFrontMatterItem } from "./frontMatter";
 import { parseHtmlDocument } from "./html";
+import { serializeDoc } from "./serialize";
 
 function item(
   href: string,
@@ -82,7 +83,7 @@ test("filterSpine removes front matter when enabled", () => {
   ]);
 });
 
-test("extractBook skips nav when removeFrontMatter is on", () => {
+test("extractDoc skips nav when removeFrontMatter is on", () => {
   const spine = [
     item(
       "nav.xhtml",
@@ -96,10 +97,10 @@ test("extractBook skips nav when removeFrontMatter is on", () => {
       "<html><body><h1>One</h1><p>Story.</p></body></html>",
     ),
   ];
-  const book = extractBook(filterSpine(spine, true), "Book", "markdown");
+  const doc = extractDoc(filterSpine(spine, true), "Book");
 
-  expect(book.chapters).toHaveLength(1);
-  expect(book.chapters[0]!.lines).toContain("# One");
+  expect(doc.chapters).toHaveLength(1);
+  expect(serializeDoc(doc, "markdown")).toContain("# One");
 });
 
 test("isFrontMatterItem: table of contents heading page", () => {

@@ -1,60 +1,56 @@
-import { isMarkdownStructural, PARAGRAPH_END_RE } from "../markdown";
-import type { Book, Options } from "../types";
+import type { Block, ListItem } from "../doc";
+import { appendInlineWithSpace, inlineText } from "../docTransforms";
+import type { TransformStep } from "../types";
 
-// Lines that look like headings (all caps, short, no punctuation) or scene breaks
-// should not be joined to the next line.
-function isStructural(line: string): boolean {
-  if (isMarkdownStructural(line)) return true;
-  // Very short line — likely a heading or label
-  if (line.length < 4) return true;
-  return false;
-}
+const PARAGRAPH_END_RE = /[.!?:)\]"'»…\u2026\u201D\u2019]$/u;
 
-function joinLines(lines: string[]): string[] {
-  const result: string[] = [];
+function unwrapBlocks(blocks: Block[]): Block[] {
+  const result: Block[] = [];
   let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    if (line === undefined) break;
-
-    if (isStructural(line)) {
-      result.push(line);
+  while (i < blocks.length) {
+    const block = unwrapNestedBlock(blocks[i]!);
+    if (block.t !== "para") {
+      result.push(block);
       i++;
       continue;
     }
 
-    // If line ends with sentence punctuation, don't join
-    if (PARAGRAPH_END_RE.test(line)) {
-      result.push(line);
-      i++;
-      continue;
+    const text = inlineText(block.inline);
+    const next = blocks[i + 1] ? unwrapNestedBlock(blocks[i + 1]!) : undefined;
+    if (next?.t === "para") {
+      const nextText = inlineText(next.inline);
+      if (!PARAGRAPH_END_RE.test(text) && /^[a-z]/u.test(nextText)) {
+        result.push({
+          t: "para",
+          inline: appendInlineWithSpace(block.inline, next.inline),
+        });
+        i += 2;
+        continue;
+      }
     }
 
-    // Look ahead: join if next line is non-empty, non-structural, and starts lowercase
-    const next = lines[i + 1];
-    if (
-      next !== undefined &&
-      next !== "" &&
-      !isStructural(next) &&
-      /^[a-z]/u.test(next)
-    ) {
-      result.push(`${line} ${next}`);
-      i += 2;
-      continue;
-    }
-
-    result.push(line);
+    result.push(block);
     i++;
   }
   return result;
 }
 
-export function unwrap(book: Book, _opts: Options): Book {
-  return {
-    ...book,
-    chapters: book.chapters.map((ch) => ({
-      ...ch,
-      lines: joinLines(ch.lines),
-    })),
-  };
+function unwrapListItem(item: ListItem): ListItem {
+  return { children: unwrapBlocks(item.children) };
 }
+
+function unwrapNestedBlock(block: Block): Block {
+  if (block.t === "quote")
+    return { ...block, children: unwrapBlocks(block.children) };
+  if (block.t === "list")
+    return { ...block, items: block.items.map(unwrapListItem) };
+  return block;
+}
+
+export const unwrap: TransformStep = (doc) => ({
+  ...doc,
+  chapters: doc.chapters.map((chapter) => ({
+    ...chapter,
+    blocks: unwrapBlocks(chapter.blocks),
+  })),
+});

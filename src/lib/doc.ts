@@ -10,9 +10,13 @@ export type Block =
   | { t: "heading"; level: number; inline: Inline[] }
   | { t: "para"; inline: Inline[] }
   | { t: "sceneBreak" }
-  | { t: "list"; ordered: boolean; items: Inline[][] }
+  | { t: "list"; ordered: boolean; items: ListItem[] }
   | { t: "quote"; children: Block[] }
   | { t: "codeBlock"; value: string };
+
+export interface ListItem {
+  children: Block[];
+}
 
 export interface DocChapter {
   title: string;

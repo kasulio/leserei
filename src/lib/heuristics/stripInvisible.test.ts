@@ -1,30 +1,28 @@
 import { expect, test } from "bun:test";
 
-import type { Book, Options } from "../types";
 import { stripInvisible } from "./stripInvisible";
-
-function book(lines: string[]): Book {
-  return { title: "", chapters: [{ title: "", lines }] };
-}
-
-const opts = {} as Options;
+import { opts, paragraphs, render } from "./testUtils";
 
 test("removes soft hyphens", () => {
-  const result = stripInvisible(book(["hy\u00ADphen"]), opts);
-  expect(result.chapters[0]!.lines[0]!).toBe("hyphen");
+  expect(render(stripInvisible(paragraphs(["hy\u00ADphen"]), opts))).toBe(
+    "hyphen",
+  );
 });
 
 test("removes zero-width space", () => {
-  const result = stripInvisible(book(["hel\u200Blo"]), opts);
-  expect(result.chapters[0]!.lines[0]!).toBe("hello");
+  expect(render(stripInvisible(paragraphs(["hel\u200Blo"]), opts))).toBe(
+    "hello",
+  );
 });
 
 test("removes byte-order mark", () => {
-  const result = stripInvisible(book(["\uFEFFStart"]), opts);
-  expect(result.chapters[0]!.lines[0]!).toBe("Start");
+  expect(render(stripInvisible(paragraphs(["\uFEFFStart"]), opts))).toBe(
+    "Start",
+  );
 });
 
 test("leaves visible punctuation", () => {
-  const result = stripInvisible(book(["hello—world"]), opts);
-  expect(result.chapters[0]!.lines[0]!).toBe("hello—world");
+  expect(render(stripInvisible(paragraphs(["hello—world"]), opts))).toBe(
+    "hello—world",
+  );
 });

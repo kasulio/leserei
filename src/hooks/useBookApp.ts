@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { loadEpub, type SpineItem } from "../lib/epub";
-import { extractBook } from "../lib/extract";
+import { extractDoc } from "../lib/extract";
 import { filterSpine } from "../lib/frontMatter";
-import { bookToText, defaultOptions, runPipeline } from "../lib/pipeline";
+import { defaultOptions, runPipeline } from "../lib/pipeline";
 import { PRESETS } from "../lib/presets";
+import { serializeDoc } from "../lib/serialize";
 import type { Options, OutputFormat, StepId } from "../lib/types";
 
 export function useBookApp() {
@@ -26,16 +27,16 @@ export function useBookApp() {
     return filterSpine(spine, opts.removeFrontMatter);
   }, [spine, opts.removeFrontMatter]);
 
-  const book = useMemo(() => {
+  const doc = useMemo(() => {
     if (!displaySpine) return null;
-    return extractBook(displaySpine, filename, outputFormat);
-  }, [displaySpine, filename, outputFormat]);
+    return extractDoc(displaySpine, filename);
+  }, [displaySpine, filename]);
 
   const processedText = useMemo(() => {
-    if (!book) return null;
-    const result = runPipeline(book, opts, outputFormat);
-    return bookToText(result, outputFormat, opts);
-  }, [book, opts, outputFormat]);
+    if (!doc) return null;
+    const result = runPipeline(doc, opts);
+    return serializeDoc(result, outputFormat, opts);
+  }, [doc, opts, outputFormat]);
 
   const displayText = editedText ?? processedText ?? "";
   const hasEdits = editedText !== null;
@@ -161,7 +162,7 @@ export function useBookApp() {
 
   const previewMeta =
     previewMode === "output"
-      ? `${book?.chapters.length ?? 0} chapters · ${displayText.length.toLocaleString()} chars${hasEdits ? " · edited" : ""}${opts.removeFrontMatter ? " · front matter skipped" : ""}`
+      ? `${doc?.chapters.length ?? 0} chapters · ${displayText.length.toLocaleString()} chars${hasEdits ? " · edited" : ""}${opts.removeFrontMatter ? " · front matter skipped" : ""}`
       : `${displaySpine?.length ?? 0} files · ${sourceHtml?.content.length.toLocaleString() ?? 0} chars`;
 
   const controlsProps = {
@@ -182,7 +183,7 @@ export function useBookApp() {
     filename,
     error,
     spine,
-    book,
+    doc,
     loading,
     isDragging,
     setIsDragging,

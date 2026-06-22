@@ -1,5 +1,6 @@
+import { mapDocText } from "../docTransforms";
 import { mreplace } from "../mreplace";
-import type { Book, Options } from "../types";
+import type { TransformStep } from "../types";
 
 export const DEFAULT_MAX_BLANK_LINES = 2;
 
@@ -112,48 +113,13 @@ const HEX_ENTITY_MAP: Record<string, string> = {
 
 const unsmartenText = mreplace({ ...CALIBRE, ...EXTENSIONS });
 
-function transformLine(line: string): string {
-  const text = unsmartenText(line);
-  return text.replace(
+function normalizeText(text: string): string {
+  const unsmartened = unsmartenText(text);
+  const decoded = unsmartened.replace(
     HEX_ENTITIES,
     (match, hex) => HEX_ENTITY_MAP[hex.toLowerCase()] ?? match,
   );
+  return decoded.replace(/ {2,}/g, " ");
 }
 
-function cleanLines(lines: string[], maxBlankLines: number): string[] {
-  const trimmed = lines.map((l) => {
-    const t = l.trimEnd().replace(/ {2,}/g, " ");
-    return t.trim() === "" ? "" : t;
-  });
-
-  const result: string[] = [];
-  let blanks = 0;
-  for (const line of trimmed) {
-    if (line === "") {
-      blanks++;
-      if (blanks <= maxBlankLines) result.push("");
-    } else {
-      blanks = 0;
-      result.push(line);
-    }
-  }
-
-  while (result.length && result[0] === "") result.shift();
-  while (result.length && result[result.length - 1] === "") result.pop();
-
-  return result;
-}
-
-export function normalize(book: Book, opts: Options): Book {
-  const maxBlankLines = Math.max(
-    0,
-    opts.maxBlankLines ?? DEFAULT_MAX_BLANK_LINES,
-  );
-  return {
-    ...book,
-    chapters: book.chapters.map((ch) => ({
-      ...ch,
-      lines: cleanLines(ch.lines.map(transformLine), maxBlankLines),
-    })),
-  };
-}
+export const normalize: TransformStep = (doc) => mapDocText(doc, normalizeText);

@@ -1,9 +1,7 @@
 import type { Block, Doc, DocChapter, Inline } from "./doc";
+import { inlineText } from "./docTransforms";
 import type { SpineItem } from "./epub";
 import { documentBody, parseHtmlDocument } from "./html";
-import { docToMarkdownBook } from "./serialize/markdown";
-import { docToPlainBook } from "./serialize/plain";
-import type { Book, OutputFormat } from "./types";
 
 const BLOCK_TAGS = new Set([
   "p",
@@ -58,17 +56,6 @@ function normalizeText(text: string): string {
   return text.replace(/\s+/g, " ");
 }
 
-function textContent(inline: Inline[]): string {
-  let text = "";
-  for (const node of inline) {
-    if (node.t === "text" || node.t === "code") text += node.value;
-    else if (node.t === "emph" || node.t === "strong" || node.t === "link") {
-      text += textContent(node.children);
-    } else if (node.t === "break") text += "\n";
-  }
-  return text.trim();
-}
-
 function extractInline(el: Element): Inline[] {
   const inline: Inline[] = [];
   for (const node of Array.from(el.childNodes)) {
@@ -109,13 +96,30 @@ function extractInline(el: Element): Inline[] {
 }
 
 function extractList(el: Element, ordered: boolean): Block | null {
-  const items: Inline[][] = [];
+  const items: Array<{ children: Block[] }> = [];
   for (const child of Array.from(el.children)) {
     if (tagName(child) !== "li") continue;
-    const inline = extractInline(child);
-    if (textContent(inline)) items.push(inline);
+    const children = hasNestedBlockElements(child)
+      ? extractBlocksFromChildren(child)
+      : [{ t: "para" as const, inline: extractInline(child) }];
+    if (children.some((block) => blockText(block))) items.push({ children });
   }
   return items.length ? { t: "list", ordered, items } : null;
+}
+
+function blockText(block: Block): string {
+  if (block.t === "heading" || block.t === "para")
+    return inlineText(block.inline);
+  if (block.t === "quote")
+    return block.children.map(blockText).join(" ").trim();
+  if (block.t === "list") {
+    return block.items
+      .map((item) => item.children.map(blockText).join(" "))
+      .join(" ")
+      .trim();
+  }
+  if (block.t === "codeBlock") return block.value.trim();
+  return "* * *";
 }
 
 function extractBlocksFromChildren(el: Element): Block[] {
@@ -150,7 +154,7 @@ function extractBlocks(el: Element): Block[] {
 
   if (isHeadingTag(tag)) {
     const inline = extractInline(el);
-    return textContent(inline)
+    return inlineText(inline)
       ? [{ t: "heading", level: Number(tag[1]), inline }]
       : [];
   }
@@ -158,7 +162,7 @@ function extractBlocks(el: Element): Block[] {
   if (BLOCK_TAGS.has(tag)) {
     if (hasNestedBlockElements(el)) return extractBlocksFromChildren(el);
     const inline = extractInline(el);
-    return textContent(inline) ? [{ t: "para", inline }] : [];
+    return inlineText(inline) ? [{ t: "para", inline }] : [];
   }
 
   return extractBlocksFromChildren(el);
@@ -169,7 +173,7 @@ function extractChapterDoc(item: SpineItem): DocChapter {
   const body = documentBody(doc);
   const blocks = extractBlocksFromChildren(body);
   const heading = blocks.find((block) => block.t === "heading");
-  const title = heading?.t === "heading" ? textContent(heading.inline) : "";
+  const title = heading?.t === "heading" ? inlineText(heading.inline) : "";
   return { title, blocks };
 }
 
@@ -178,13 +182,4 @@ export function extractDoc(spine: SpineItem[], bookTitle = ""): Doc {
     .map((item) => extractChapterDoc(item))
     .filter((chapter) => chapter.blocks.length > 0);
   return { title: bookTitle, chapters };
-}
-
-export function extractBook(
-  spine: SpineItem[],
-  bookTitle = "",
-  format: OutputFormat = "markdown",
-): Book {
-  const doc = extractDoc(spine, bookTitle);
-  return format === "plain" ? docToPlainBook(doc) : docToMarkdownBook(doc);
 }

@@ -9,7 +9,7 @@ export function App() {
     filename,
     error,
     spine,
-    book,
+    doc,
     loading,
     isDragging,
     setIsDragging,
@@ -36,7 +36,7 @@ export function App() {
         <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6">
           <FileDropZone
             loading={loading}
-            hasBook={!!book}
+            hasBook={!!doc}
             filename={filename}
             isDragging={isDragging}
             onDragOver={(e) => {
@@ -80,7 +80,7 @@ export function App() {
           )}
         </main>
 
-        {book && (
+        {doc && (
           <div className="shrink-0 border-border border-t bg-bg/95 px-4 py-3 backdrop-blur-sm lg:hidden">
             <ControlsPanel {...controlsProps} compact />
           </div>

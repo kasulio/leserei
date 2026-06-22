@@ -1,42 +1,68 @@
-import type { Book, Options } from "../types";
+import type { Block, ListItem } from "../doc";
+import {
+  appendInline,
+  inlineText,
+  removeTrailingInlineChar,
+} from "../docTransforms";
+import type { TransformStep } from "../types";
 
-// Matches a line ending with a hyphenated word fragment: word-
 const HYPHEN_END_RE = /^(.*\S)-$/u;
 
-function joinLines(lines: string[]): string[] {
-  const result: string[] = [];
+function dehyphenateBlocks(blocks: Block[]): Block[] {
+  const result: Block[] = [];
   let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    if (line === undefined) break;
-    const match = HYPHEN_END_RE.exec(line);
+  while (i < blocks.length) {
+    const block = cleanNestedBlock(blocks[i]!);
+    if (block.t !== "para") {
+      result.push(block);
+      i++;
+      continue;
+    }
 
-    if (match) {
-      let j = i + 1;
-      if (lines[j] === "" && lines[j + 1] !== undefined) j++;
-      const next = lines[j];
-      // Join only when next fragment starts with a lowercase letter (real word continuation)
-      if (next !== undefined && /^[a-z]/u.test(next)) {
-        // Remove the hyphen and concatenate
-        const joined = match[1] + next;
-        result.push(joined);
-        i = j + 1;
+    const text = inlineText(block.inline);
+    const match = HYPHEN_END_RE.exec(text);
+    const next = blocks[i + 1] ? cleanNestedBlock(blocks[i + 1]!) : undefined;
+    if (match && next?.t === "para") {
+      const nextText = inlineText(next.inline);
+      if (/^[a-z]/u.test(nextText)) {
+        const withoutHyphen = removeTrailingInlineChar(block.inline, "-");
+        if (withoutHyphen) {
+          result.push({
+            t: "para",
+            inline: appendInline(withoutHyphen, next.inline),
+          });
+        } else {
+          result.push(block);
+        }
+        i += 2;
         continue;
       }
     }
 
-    result.push(line);
+    result.push(block);
     i++;
   }
   return result;
 }
 
-export function dehyphenate(book: Book, _opts: Options): Book {
-  return {
-    ...book,
-    chapters: book.chapters.map((ch) => ({
-      ...ch,
-      lines: joinLines(ch.lines),
-    })),
-  };
+function cleanListItem(item: ListItem): ListItem {
+  return { children: dehyphenateBlocks(item.children) };
 }
+
+function cleanNestedBlock(block: Block): Block {
+  if (block.t === "quote") {
+    return { ...block, children: dehyphenateBlocks(block.children) };
+  }
+  if (block.t === "list") {
+    return { ...block, items: block.items.map(cleanListItem) };
+  }
+  return block;
+}
+
+export const dehyphenate: TransformStep = (doc) => ({
+  ...doc,
+  chapters: doc.chapters.map((chapter) => ({
+    ...chapter,
+    blocks: dehyphenateBlocks(chapter.blocks),
+  })),
+});

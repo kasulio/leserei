@@ -1,10 +1,12 @@
 import { expect, test } from "bun:test";
 
 import type { SpineItem } from "./epub";
-import { extractBook } from "./extract";
+import { extractDoc } from "./extract";
 import { parseHtmlDocument } from "./html";
-import { bookToText, runPipeline } from "./pipeline";
+import { runPipeline } from "./pipeline";
 import { PRESETS } from "./presets";
+import { serializeDoc } from "./serialize";
+import type { Options, OutputFormat } from "./types";
 
 function spine(html: string, overrides: Partial<SpineItem> = {}): SpineItem[] {
   return [
@@ -19,62 +21,50 @@ function spine(html: string, overrides: Partial<SpineItem> = {}): SpineItem[] {
   ];
 }
 
+function render(
+  html: string,
+  format: OutputFormat = "markdown",
+  opts?: Options,
+): string {
+  const doc = extractDoc(spine(html), "Test");
+  const processed = opts ? runPipeline(doc, opts) : doc;
+  return serializeDoc(processed, format, opts);
+}
+
 test("markdown: headings, emphasis, scene break", () => {
-  const book = extractBook(
-    spine(`<html><body>
+  expect(
+    render(`<html><body>
       <h1>Chapter One</h1>
       <p>She said <em>hello</em> and <strong>goodbye</strong>.</p>
       <hr/>
       <p>Next scene.</p>
     </body></html>`),
-    "Test",
-    "markdown",
+  ).toBe(
+    "# Chapter One\n\nShe said *hello* and **goodbye**.\n\n* * *\n\nNext scene.",
   );
-
-  expect(book.chapters[0]!.lines).toEqual([
-    "# Chapter One",
-    "",
-    "She said *hello* and **goodbye**.",
-    "",
-    "* * *",
-    "",
-    "Next scene.",
-  ]);
 });
 
 test("markdown: unordered list", () => {
-  const book = extractBook(
-    spine(`<html><body><ul><li>One</li><li>Two</li></ul></body></html>`),
-    "",
-    "markdown",
-  );
-
-  expect(book.chapters[0]!.lines).toEqual(["+ One", "+ Two"]);
+  expect(
+    render(`<html><body><ul><li>One</li><li>Two</li></ul></body></html>`),
+  ).toBe("+ One\n+ Two");
 });
 
 test("markdown: list with li>p and wrapper div", () => {
-  const book = extractBook(
-    spine(`<html><body>
+  expect(
+    render(`<html><body>
       <div class="liste_ungeordnet"><ul class="listtype_dash">
         <li class="firstincontainer2"><p class="firstinsequence">First list item.</p></li>
         <li class="firstincontainer2"><p class="firstinsequence">Second list item.</p></li>
         <li class="firstincontainer2"><p class="firstinsequence"><span class="origpage" epub:type="pagebreak" title="20"></span>Third list item.</p></li>
       </ul></div>
     </body></html>`),
-    "",
-    "markdown",
-  );
-
-  expect(book.chapters[0]!.lines).toEqual([
-    "+ First list item.",
-    "+ Second list item.",
-    "+ Third list item.",
-  ]);
+  ).toBe("+ First list item.\n+ Second list item.\n+ Third list item.");
 });
 
 test("markdown: wrapped dash list with pagebreak spans", () => {
-  const book = extractBook(
-    spine(`<html><body>
+  expect(
+    render(`<html><body>
       <div class="liste_ungeordnet"><ul class="listtype_dash">
         <li class="firstincontainer2"><p class="firstinsequence">Alpha item.</p></li>
         <li class="firstincontainer2"><p class="firstinsequence">Beta item with extra words.</p></li>
@@ -83,262 +73,158 @@ test("markdown: wrapped dash list with pagebreak spans", () => {
         <li class="firstincontainer2"><p class="firstinsequence">Epsilon item (maybe).</p></li>
       </ul></div>
     </body></html>`),
-    "",
-    "markdown",
+  ).toBe(
+    "+ Alpha item.\n+ Beta item with extra words.\n+ Gamma item after page break.\n+ Delta item (parenthetical aside.)\n+ Epsilon item (maybe).",
   );
-
-  expect(book.chapters[0]!.lines).toEqual([
-    "+ Alpha item.",
-    "+ Beta item with extra words.",
-    "+ Gamma item after page break.",
-    "+ Delta item (parenthetical aside.)",
-    "+ Epsilon item (maybe).",
-  ]);
 });
 
 test("markdown: plus sign in prose is not escaped after pipeline", () => {
-  const book = extractBook(
-    spine(`<html><body><p>2+2 equals 4.</p></body></html>`),
-    "",
-    "markdown",
-  );
-  expect(book.chapters[0]!.lines[0]).toBe("2+2 equals 4.");
-
-  const processed = runPipeline(
-    book,
-    PRESETS.find((p) => p.id === "reading")!.options,
-    "markdown",
-  );
-  expect(processed.chapters[0]!.lines[0]).toBe("2+2 equals 4.");
+  expect(
+    render(
+      `<html><body><p>2+2 equals 4.</p></body></html>`,
+      "markdown",
+      PRESETS.find((p) => p.id === "reading")!.options,
+    ),
+  ).toBe("2+2 equals 4.");
 });
 
 test("markdown: external link", () => {
-  const book = extractBook(
-    spine(
+  expect(
+    render(
       `<html><body><p>See <a href="https://example.com">here</a>.</p></body></html>`,
     ),
-    "",
-    "markdown",
-  );
-
-  expect(book.chapters[0]!.lines[0]!).toBe("See [here](https://example.com).");
+  ).toBe("See [here](https://example.com).");
 });
 
 test("markdown: omits images", () => {
-  const book = extractBook(
-    spine(`<html><body>
+  expect(
+    render(`<html><body>
       <p>Before <img src="pic.png" alt="diagram"/> after.</p>
       <p><img src="solo.png" alt="solo"/></p>
       <figure><img src="fig.png"/><figcaption>Caption</figcaption></figure>
     </body></html>`),
-    "",
-    "markdown",
-  );
-
-  expect(book.chapters[0]!.lines).toEqual(["Before  after.", "", "Caption"]);
+  ).toBe("Before  after.\n\nCaption");
 });
 
 test("markdown: headings inside div keep level", () => {
-  const book = extractBook(
-    spine(`<html><body>
+  expect(
+    render(`<html><body>
       <div>
         <h2>Section</h2>
         <p>Body text.</p>
       </div>
     </body></html>`),
-    "",
-    "markdown",
-  );
+  ).toBe("## Section\n\nBody text.");
+});
 
-  expect(book.chapters[0]!.lines).toEqual(["## Section", "", "Body text."]);
+test("markdown: preserves spaces around inline spans in headings", () => {
+  expect(
+    render(
+      `<html><body>
+        <h2 class="titel1" id="hid3"><span class="text" epub:type="title"><span aria-hidden="true" class="origpage2" epub:type="pagebreak" id="origpage_11" role="doc-pagebreak" title="11"></span>Nummer <span class="ziffer">1</span></span></h2>
+      </body></html>`,
+      "markdown",
+      PRESETS.find((p) => p.id === "reading")!.options,
+    ),
+  ).toBe("## Nummer 1");
+});
+
+test("markdown: preserves spaces around adjacent styled spans", () => {
+  expect(
+    render(
+      `<html><body>
+        <p class="calibre2">Ich schlenderte über den Friedhof und schaute auf den Grabsteinen nach etwas Besonderem: <span class="kapitaelchen">MARTHA F. SUDEROW, </span><span class="ziffer1">24</span>. <span class="kapitaelchen">APRIL</span> <span class="ziffer1">1876</span> – <span class="ziffer1">1</span>. <span class="kapitaelchen">MÄRZ</span> <span class="ziffer1">1979</span>; hundertzwei Jahre!</p>
+      </body></html>`,
+      "markdown",
+      PRESETS.find((p) => p.id === "reading")!.options,
+    ),
+  ).toBe(
+    "Ich schlenderte über den Friedhof und schaute auf den Grabsteinen nach etwas Besonderem: MARTHA F. SUDEROW, 24. APRIL 1876 -- 1. MÄRZ 1979; hundertzwei Jahre!",
+  );
 });
 
 test("markdown: h1-h6 map to correct hash count", () => {
-  const book = extractBook(
-    spine(`<html><body>
+  expect(
+    render(`<html><body>
       <h1>L1</h1><h2>L2</h2><h3>L3</h3><h4>L4</h4><h5>L5</h5><h6>L6</h6>
     </body></html>`),
-    "",
-    "markdown",
-  );
-
-  expect(book.chapters[0]!.lines).toEqual([
-    "# L1",
-    "",
-    "## L2",
-    "",
-    "### L3",
-    "",
-    "#### L4",
-    "",
-    "##### L5",
-    "",
-    "###### L6",
-  ]);
+  ).toBe("# L1\n\n## L2\n\n### L3\n\n#### L4\n\n##### L5\n\n###### L6");
 });
 
 test("markdown: p with br keeps inline text", () => {
-  const book = extractBook(
-    spine(
+  expect(
+    render(
       `<html><body><p>Line1<br/>Line2</p><p>Para A</p><p>Para B</p></body></html>`,
     ),
-    "",
-    "markdown",
-  );
-
-  expect(book.chapters[0]!.lines).toEqual([
-    "Line1  \nLine2",
-    "",
-    "Para A",
-    "",
-    "Para B",
-  ]);
+  ).toBe("Line1  \nLine2\n\nPara A\n\nPara B");
 });
 
 test("plain: p with br keeps line breaks", () => {
-  const book = extractBook(
-    spine(`<html><body><p>Line1<br/>Line2</p></body></html>`),
-    "",
-    "plain",
-  );
-
-  expect(book.chapters[0]!.lines[0]!).toBe("Line1\nLine2");
-});
-
-test("markdown: p with br keeps inline text", () => {
-  const book = extractBook(
-    spine(
-      `<html><body><p>Line1<br/>Line2</p><p>Para A</p><p>Para B</p></body></html>`,
-    ),
-    "",
-    "markdown",
-  );
-
-  expect(book.chapters[0]!.lines).toEqual([
-    "Line1  \nLine2",
-    "",
-    "Para A",
-    "",
-    "Para B",
-  ]);
-});
-
-test("plain: p with br keeps line breaks", () => {
-  const book = extractBook(
-    spine(`<html><body><p>Line1<br/>Line2</p></body></html>`),
-    "",
-    "plain",
-  );
-
-  expect(book.chapters[0]!.lines[0]!).toBe("Line1\nLine2");
+  expect(
+    render(`<html><body><p>Line1<br/>Line2</p></body></html>`, "plain"),
+  ).toBe("Line1\nLine2");
 });
 
 test("plain: collapses source newlines inside p", () => {
-  const book = extractBook(
-    spine(
+  expect(
+    render(
       `<html><body><p>The quick brown fox\njumps over the lazy dog.</p></body></html>`,
+      "plain",
     ),
-    "",
-    "plain",
-  );
-
-  expect(book.chapters[0]!.lines[0]!).toBe(
-    "The quick brown fox jumps over the lazy dog.",
-  );
+  ).toBe("The quick brown fox jumps over the lazy dog.");
 });
 
 test("plain: strips formatting", () => {
-  const book = extractBook(
-    spine(`<html><body><p><em>italic</em> text</p></body></html>`),
-    "",
-    "plain",
-  );
-
-  expect(book.chapters[0]!.lines[0]!).toBe("italic text");
+  expect(
+    render(`<html><body><p><em>italic</em> text</p></body></html>`, "plain"),
+  ).toBe("italic text");
 });
 
-test("plain: bookToText does not duplicate heading", () => {
-  const book = extractBook(
-    spine(
-      `<html><body><h1>Chapter One</h1><p>First para.</p><p>Second para.</p></body></html>`,
-    ),
-    "",
+test("plain: serializer does not duplicate heading", () => {
+  const text = render(
+    `<html><body><h1>Chapter One</h1><p>First para.</p><p>Second para.</p></body></html>`,
     "plain",
   );
-
-  const text = bookToText(book, "plain");
   expect(text.match(/Chapter One/g)?.length).toBe(1);
   expect(text).toBe("Chapter One\n\nFirst para.\n\nSecond para.");
 });
 
 test("markdown: soft-wrapped p tags omit blank gap", () => {
-  const book = extractBook(
-    spine(
+  expect(
+    render(
       `<html><body><p>The quick brown fox</p><p>jumps over the lazy dog.</p></body></html>`,
     ),
-    "",
-    "markdown",
-  );
-
-  expect(book.chapters[0]!.lines).toEqual([
-    "The quick brown fox",
-    "jumps over the lazy dog.",
-  ]);
+  ).toBe("The quick brown fox\njumps over the lazy dog.");
 });
 
 test("processed preset unwraps soft-wrapped paragraphs", () => {
-  const book = extractBook(
-    spine(
+  expect(
+    render(
       `<html><body><p>The quick brown fox</p><p>jumps over the lazy dog.</p><p>Second paragraph.</p><p>Third starts here.</p></body></html>`,
+      "markdown",
+      PRESETS.find((p) => p.id === "processed")!.options,
     ),
-    "",
-    "markdown",
-  );
-
-  const result = runPipeline(
-    book,
-    PRESETS.find((p) => p.id === "processed")!.options,
-  );
-  expect(result.chapters[0]!.lines).toEqual([
-    "The quick brown fox jumps over the lazy dog.",
-    "",
-    "Second paragraph.",
-    "",
-    "Third starts here.",
-  ]);
-  expect(bookToText(result, "markdown")).toBe(
+  ).toBe(
     "The quick brown fox jumps over the lazy dog.\n\nSecond paragraph.\n\nThird starts here.",
   );
 });
 
 test("processed preset preserves scene break text", () => {
-  const book = extractBook(
-    spine(`<html><body><p>* * *</p></body></html>`),
-    "",
-    "markdown",
-  );
-
-  const result = runPipeline(
-    book,
-    PRESETS.find((p) => p.id === "processed")!.options,
-    "markdown",
-  );
-  expect(result.chapters[0]!.lines[0]!).toBe("* * *");
+  expect(
+    render(
+      `<html><body><p>* * *</p></body></html>`,
+      "markdown",
+      PRESETS.find((p) => p.id === "processed")!.options,
+    ),
+  ).toBe("* * *");
 });
 
 test("processed preset spaces emphasis after punctuation", () => {
-  const book = extractBook(
-    spine(
+  expect(
+    render(
       `<html><body><p>She paused.<i class="calibre5"> "Hello there!</i></p></body></html>`,
+      "markdown",
+      PRESETS.find((p) => p.id === "processed")!.options,
     ),
-    "",
-    "markdown",
-  );
-
-  const result = runPipeline(
-    book,
-    PRESETS.find((p) => p.id === "processed")!.options,
-    "markdown",
-  );
-  expect(result.chapters[0]!.lines[0]!).toBe('She paused. *"Hello there!*');
+  ).toBe('She paused. *"Hello there!*');
 });
