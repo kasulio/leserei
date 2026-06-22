@@ -1,8 +1,5 @@
 import type { SelectHTMLAttributes } from "react";
 
-const fieldClasses =
-  "w-full cursor-pointer appearance-none rounded-[0.625rem] border border-border bg-surface-raised py-2.5 pl-3 pr-9 text-sm text-text transition-[border-color,box-shadow] duration-150 focus:border-accent focus:outline-none focus:shadow-ring";
-
 export function Select({
   className = "",
   children,
@@ -10,7 +7,10 @@ export function Select({
 }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <div className="relative">
-      <select className={`${fieldClasses} ${className}`} {...props}>
+      <select
+        className={`w-full cursor-pointer appearance-none rounded-[0.625rem] border border-border bg-surface-raised py-2.5 pr-9 pl-3 text-sm text-text transition-shadow duration-150 focus:border-accent focus:shadow-ring focus:outline-none ${className}`}
+        {...props}
+      >
         {children}
       </select>
       <svg

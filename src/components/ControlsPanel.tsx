@@ -79,12 +79,12 @@ export function ControlsPanel({
           type="button"
           onClick={() => onCustomizeOpenChange(!customizeOpen)}
           aria-expanded={customizeOpen}
-          className="flex min-h-11 w-full items-center justify-between rounded-lg border border-border bg-surface px-3 py-2.5 font-medium text-sm transition-colors hover:border-muted"
+          className="flex min-h-11 w-full items-center justify-between rounded-lg border border-border bg-surface px-3 py-2.5 font-medium text-sm hover:border-muted"
         >
           Customize
           <svg
             aria-hidden="true"
-            className={`h-4 w-4 text-muted transition-transform ${customizeOpen ? "rotate-180" : ""}`}
+            className={`h-4 w-4 text-muted ${customizeOpen ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             strokeWidth={2}

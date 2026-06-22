@@ -5,9 +5,9 @@ type GhostActive = "output" | "source";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "rounded-[0.625rem] bg-accent px-4 py-2.5 text-sm font-semibold text-on-accent transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px focus-visible:outline-none focus-visible:shadow-ring",
+    "rounded-[0.625rem] bg-accent px-4 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover active:translate-y-px focus-visible:outline-none focus-visible:shadow-ring",
   ghost:
-    "rounded-lg px-3 py-1.5 text-xs font-semibold text-muted transition-[color,background-color] duration-150 hover:text-text",
+    "rounded-lg px-3 py-1.5 text-xs font-semibold text-muted hover:text-text",
 };
 
 const ghostActiveClasses: Record<GhostActive, string> = {

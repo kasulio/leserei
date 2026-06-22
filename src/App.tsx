@@ -29,7 +29,7 @@ export function App() {
   } = useBookApp();
 
   return (
-    <div className="grid min-h-dvh grid-rows-[auto_1fr] bg-bg text-text transition-colors duration-150">
+    <div className="grid min-h-dvh grid-rows-[auto_1fr] bg-bg text-text">
       <AppHeader />
 
       <div className="flex min-h-0 flex-col">

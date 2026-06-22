@@ -10,7 +10,7 @@ export function ThemeToggle() {
       aria-label={
         theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
       }
-      className="rounded-lg border border-border bg-surface p-2.5 text-muted transition-colors hover:text-text"
+      className="cursor-pointer rounded-lg border border-border bg-surface p-2.5 text-muted hover:text-text"
     >
       {theme === "dark" ? (
         <svg

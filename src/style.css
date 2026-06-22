@@ -67,20 +67,7 @@
 }
 
 @layer base {
-  body {
-    @apply bg-bg font-sans text-text antialiased transition-[background-color,color] duration-150;
-  }
-
   ::selection {
     @apply bg-accent text-on-accent;
   }
-}
-
-*,
-*::before,
-*::after {
-  transition:
-    color 200ms ease,
-    background-color 200ms ease,
-    border-color 200ms ease;
 }

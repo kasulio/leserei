@@ -18,7 +18,7 @@ export function StepToggle({
       type="button"
       id={`step-${id}`}
       onClick={() => onToggle(id)}
-      className={`flex min-h-11 w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+      className={`flex min-h-11 w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left ${
         enabled
           ? "border-accent/40 bg-accent-subtle"
           : "border-border bg-surface hover:border-muted"

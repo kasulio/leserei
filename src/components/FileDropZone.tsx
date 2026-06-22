@@ -19,7 +19,7 @@ export function FileDropZone({
 }) {
   return (
     <label
-      className={`flex shrink-0 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
+      className={`flex shrink-0 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed ${
         hasBook ? "px-4 py-4" : "px-4 py-12"
       } ${
         isDragging
