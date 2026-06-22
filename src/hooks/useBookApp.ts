@@ -67,6 +67,8 @@ export function useBookApp() {
       setPreviewMode("output");
       setEditedText(null);
     } catch (e) {
+      setSpine(null);
+      setFilename("");
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);

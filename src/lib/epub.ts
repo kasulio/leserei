@@ -1,5 +1,6 @@
 import JSZip from "jszip";
 
+import { assertNotDrmProtected, assertSpineContentReadable } from "./drm";
 import { parseHtmlDocument } from "./html";
 
 export interface SpineItem {
@@ -18,6 +19,8 @@ interface ManifestEntry {
 export async function loadEpub(file: File): Promise<SpineItem[]> {
   const buf = await file.arrayBuffer();
   const zip = await JSZip.loadAsync(buf);
+
+  await assertNotDrmProtected(zip);
 
   // 1. Find OPF path from META-INF/container.xml
   const containerXml = await requireEntry(zip, "META-INF/container.xml");
@@ -45,6 +48,11 @@ export async function loadEpub(file: File): Promise<SpineItem[]> {
       properties: entry.properties,
     });
   }
+
+  assertSpineContentReadable(
+    items.filter((item) => item.linear).map((item) => item.content),
+  );
+
   return items;
 }
 
