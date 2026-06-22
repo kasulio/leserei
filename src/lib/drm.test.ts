@@ -1,5 +1,4 @@
 import { expect, test } from "bun:test";
-import JSZip from "jszip";
 
 import {
   assertNotDrmProtected,
@@ -7,6 +6,7 @@ import {
   DrmProtectedError,
   encryptionXmlIndicatesDrm,
 } from "./drm";
+import { buildTestZip, ZipArchive } from "./zip";
 
 const FONT_OBFUSCATION = `<?xml version="1.0" encoding="UTF-8"?>
 <encryption xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -50,30 +50,34 @@ test("contentLooksEncrypted: binary-looking payload is encrypted", () => {
 });
 
 test("assertNotDrmProtected: rights.xml throws", async () => {
-  const zip = new JSZip();
-  zip.file("META-INF/rights.xml", "<rights/>");
+  const zip = await ZipArchive.loadAsync(
+    buildTestZip({ "META-INF/rights.xml": "<rights/>" }),
+  );
   await expect(assertNotDrmProtected(zip)).rejects.toBeInstanceOf(
     DrmProtectedError,
   );
 });
 
 test("assertNotDrmProtected: LCP license throws", async () => {
-  const zip = new JSZip();
-  zip.file("META-INF/license.lcpl", "{}");
+  const zip = await ZipArchive.loadAsync(
+    buildTestZip({ "META-INF/license.lcpl": "{}" }),
+  );
   await expect(assertNotDrmProtected(zip)).rejects.toBeInstanceOf(
     DrmProtectedError,
   );
 });
 
 test("assertNotDrmProtected: font-only encryption.xml passes", async () => {
-  const zip = new JSZip();
-  zip.file("META-INF/encryption.xml", FONT_OBFUSCATION);
+  const zip = await ZipArchive.loadAsync(
+    buildTestZip({ "META-INF/encryption.xml": FONT_OBFUSCATION }),
+  );
   await expect(assertNotDrmProtected(zip)).resolves.toBeUndefined();
 });
 
 test("assertNotDrmProtected: content encryption.xml throws", async () => {
-  const zip = new JSZip();
-  zip.file("META-INF/encryption.xml", CONTENT_ENCRYPTION);
+  const zip = await ZipArchive.loadAsync(
+    buildTestZip({ "META-INF/encryption.xml": CONTENT_ENCRYPTION }),
+  );
   await expect(assertNotDrmProtected(zip)).rejects.toBeInstanceOf(
     DrmProtectedError,
   );

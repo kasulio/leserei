@@ -1,7 +1,6 @@
-import JSZip from "jszip";
-
 import { assertNotDrmProtected, assertSpineContentReadable } from "./drm";
 import { parseHtmlDocument } from "./html";
+import { ZipArchive } from "./zip";
 
 export interface SpineItem {
   href: string; // path relative to OPF directory
@@ -18,7 +17,7 @@ interface ManifestEntry {
 
 export async function loadEpub(file: File): Promise<SpineItem[]> {
   const buf = await file.arrayBuffer();
-  const zip = await JSZip.loadAsync(buf);
+  const zip = await ZipArchive.loadAsync(buf);
 
   await assertNotDrmProtected(zip);
 
@@ -56,7 +55,7 @@ export async function loadEpub(file: File): Promise<SpineItem[]> {
   return items;
 }
 
-async function requireEntry(zip: JSZip, path: string): Promise<string> {
+async function requireEntry(zip: ZipArchive, path: string): Promise<string> {
   const entry = zip.file(path);
   if (!entry) throw new Error(`EPUB missing: ${path}`);
   return entry.async("string");

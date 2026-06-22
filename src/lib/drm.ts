@@ -1,4 +1,4 @@
-import type JSZip from "jszip";
+import type { ZipArchive } from "./zip";
 
 const FONT_OBFUSCATION_ALGORITHMS = new Set([
   "http://www.idpf.org/2008/embedding",
@@ -19,7 +19,7 @@ export class DrmProtectedError extends Error {
 
 export function encryptionXmlIndicatesDrm(xml: string): boolean {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
-  for (const data of doc.querySelectorAll("EncryptedData")) {
+  for (const data of Array.from(doc.querySelectorAll("EncryptedData"))) {
     const algorithm =
       data.querySelector("EncryptionMethod")?.getAttribute("Algorithm") ?? "";
     const uri =
@@ -49,7 +49,7 @@ export function contentLooksEncrypted(text: string): boolean {
   return nonPrintable > sample.length * 0.08;
 }
 
-export async function assertNotDrmProtected(zip: JSZip): Promise<void> {
+export async function assertNotDrmProtected(zip: ZipArchive): Promise<void> {
   if (zip.file("META-INF/rights.xml")) {
     throw new DrmProtectedError();
   }
