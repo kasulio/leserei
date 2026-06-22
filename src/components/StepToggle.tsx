@@ -20,21 +20,19 @@ export function StepToggle({
       onClick={() => onToggle(id)}
       className={`flex min-h-11 w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
         enabled
-          ? "border-[var(--accent)]/40 bg-[var(--accent-subtle)]"
-          : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--text-muted)]"
+          ? "border-accent/40 bg-accent-subtle"
+          : "border-border bg-surface hover:border-muted"
       }`}
     >
       <span
         className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-          enabled
-            ? "border-[var(--accent)] bg-[var(--accent)]"
-            : "border-[var(--border)]"
+          enabled ? "border-accent bg-accent" : "border-border"
         }`}
       >
         {enabled && (
           <svg
             aria-hidden="true"
-            className="h-2.5 w-2.5 text-[var(--on-accent)]"
+            className="h-2.5 w-2.5 text-on-accent"
             fill="currentColor"
             viewBox="0 0 16 16"
           >
@@ -44,9 +42,7 @@ export function StepToggle({
       </span>
       <span>
         <span className="block font-medium text-sm">{label}</span>
-        <span className="mt-0.5 block text-[var(--text-muted)] text-xs">
-          {description}
-        </span>
+        <span className="mt-0.5 block text-muted text-xs">{description}</span>
       </span>
     </button>
   );

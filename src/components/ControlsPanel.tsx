@@ -2,6 +2,11 @@ import { PRESETS } from "../lib/presets";
 import { STEP_UI } from "../lib/steps";
 import type { Options, OutputFormat, StepId } from "../lib/types";
 import { StepToggle } from "./StepToggle";
+import { Button } from "./ui/Button";
+import { FieldHint } from "./ui/FieldHint";
+import { FieldLabel } from "./ui/FieldLabel";
+import { Input } from "./ui/Input";
+import { Select } from "./ui/Select";
 
 export function ControlsPanel({
   outputFormat,
@@ -33,36 +38,30 @@ export function ControlsPanel({
   const selectablePresets = PRESETS.filter((p) => p.id !== "custom");
 
   return (
-    <div className={`flex flex-col gap-4 ${compact ? "" : ""}`}>
+    <div className="flex flex-col gap-4">
       <div
         className={compact ? "grid grid-cols-2 gap-3" : "flex flex-col gap-4"}
       >
         <div>
-          <label htmlFor="output-format" className="field-label">
-            Format
-          </label>
-          <select
+          <FieldLabel htmlFor="output-format">Format</FieldLabel>
+          <Select
             id="output-format"
             value={outputFormat}
             onChange={(e) =>
               onOutputFormatChange(e.target.value as OutputFormat)
             }
-            className="select-field"
           >
             <option value="markdown">Markdown</option>
             <option value="plain">Plain text</option>
-          </select>
+          </Select>
         </div>
 
         <div>
-          <label htmlFor="preset" className="field-label">
-            Cleanup
-          </label>
-          <select
+          <FieldLabel htmlFor="preset">Cleanup</FieldLabel>
+          <Select
             id="preset"
             value={presetId === "custom" ? "custom" : presetId}
             onChange={(e) => onPresetChange(e.target.value)}
-            className="select-field"
           >
             {selectablePresets.map((p) => (
               <option key={p.id} value={p.id}>
@@ -70,8 +69,8 @@ export function ControlsPanel({
               </option>
             ))}
             {presetId === "custom" && <option value="custom">Custom</option>}
-          </select>
-          {!compact && <p className="field-hint">{activePreset.description}</p>}
+          </Select>
+          {!compact && <FieldHint>{activePreset.description}</FieldHint>}
         </div>
       </div>
 
@@ -80,12 +79,12 @@ export function ControlsPanel({
           type="button"
           onClick={() => onCustomizeOpenChange(!customizeOpen)}
           aria-expanded={customizeOpen}
-          className="flex min-h-11 w-full items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-medium text-sm transition-colors hover:border-[var(--text-muted)]"
+          className="flex min-h-11 w-full items-center justify-between rounded-lg border border-border bg-surface px-3 py-2.5 font-medium text-sm transition-colors hover:border-muted"
         >
           Customize
           <svg
             aria-hidden="true"
-            className={`h-4 w-4 text-[var(--text-muted)] transition-transform ${customizeOpen ? "rotate-180" : ""}`}
+            className={`h-4 w-4 text-muted transition-transform ${customizeOpen ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
@@ -112,11 +111,11 @@ export function ControlsPanel({
               />
             ))}
             {opts.normalize && (
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
-                <label htmlFor="max-blank-lines" className="field-label">
+              <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
+                <FieldLabel htmlFor="max-blank-lines">
                   Max blank lines
-                </label>
-                <input
+                </FieldLabel>
+                <Input
                   id="max-blank-lines"
                   type="number"
                   min={0}
@@ -125,20 +124,20 @@ export function ControlsPanel({
                   onChange={(e) =>
                     onMaxBlankLinesChange(Number(e.target.value))
                   }
-                  className="select-field mt-1"
+                  className="mt-1"
                 />
-                <p className="field-hint">
+                <FieldHint>
                   Collapse longer runs of empty lines while cleaning
-                </p>
+                </FieldHint>
               </div>
             )}
           </div>
         )}
       </div>
 
-      <button type="button" onClick={onDownload} className="btn-primary w-full">
+      <Button variant="primary" onClick={onDownload} className="w-full">
         Download .txt
-      </button>
+      </Button>
     </div>
   );
 }

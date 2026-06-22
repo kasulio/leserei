@@ -29,7 +29,7 @@ export function App() {
   } = useBookApp();
 
   return (
-    <div className="grid min-h-dvh grid-rows-[auto_1fr] bg-[var(--bg)] text-[var(--text)] transition-colors duration-150">
+    <div className="grid min-h-dvh grid-rows-[auto_1fr] bg-bg text-text transition-colors duration-150">
       <AppHeader />
 
       <div className="flex min-h-0 flex-col">
@@ -51,7 +51,7 @@ export function App() {
           {error && (
             <p
               role="alert"
-              className="shrink-0 rounded-lg border border-[var(--error)]/30 bg-[var(--error-bg)] px-4 py-2.5 text-[var(--error)] text-sm"
+              className="shrink-0 rounded-lg border border-error/30 bg-error-bg px-4 py-2.5 text-error text-sm"
             >
               {error}
             </p>
@@ -81,7 +81,7 @@ export function App() {
         </main>
 
         {book && (
-          <div className="shrink-0 border-[var(--border)] border-t bg-[var(--bg)]/95 px-4 py-3 backdrop-blur-sm lg:hidden">
+          <div className="shrink-0 border-border border-t bg-bg/95 px-4 py-3 backdrop-blur-sm lg:hidden">
             <ControlsPanel {...controlsProps} compact />
           </div>
         )}

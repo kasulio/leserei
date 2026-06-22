@@ -23,8 +23,8 @@ export function FileDropZone({
         hasBook ? "px-4 py-4" : "px-4 py-12"
       } ${
         isDragging
-          ? "border-[var(--accent)] bg-[var(--accent-subtle)]"
-          : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--text-muted)]"
+          ? "border-accent bg-accent-subtle"
+          : "border-border bg-surface hover:border-muted"
       }`}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
@@ -37,14 +37,10 @@ export function FileDropZone({
         onChange={onInputChange}
       />
       {loading ? (
-        <span className="animate-pulse text-[var(--text-muted)] text-sm">
-          Opening book…
-        </span>
+        <span className="animate-pulse text-muted text-sm">Opening book…</span>
       ) : hasBook ? (
-        <span className="text-center text-[var(--text-muted)] text-sm">
-          <span className="font-medium text-[var(--text)]">
-            {filename}.epub
-          </span>
+        <span className="text-center text-muted text-sm">
+          <span className="font-medium text-text">{filename}.epub</span>
           {" · "}
           tap or drop to replace
         </span>
@@ -52,7 +48,7 @@ export function FileDropZone({
         <>
           <svg
             aria-hidden="true"
-            className="mb-3 h-10 w-10 text-[var(--text-muted)]"
+            className="mb-3 h-10 w-10 text-muted"
             fill="none"
             stroke="currentColor"
             strokeWidth={1.25}
@@ -65,10 +61,8 @@ export function FileDropZone({
             />
           </svg>
           <span className="font-medium text-sm">Drop an EPUB here</span>
-          <span className="mt-1 text-[var(--text-muted)] text-xs">
-            or tap to browse
-          </span>
-          <span className="mt-3 text-[var(--text-muted)] text-xs">
+          <span className="mt-1 text-muted text-xs">or tap to browse</span>
+          <span className="mt-3 text-muted text-xs">
             Runs in your browser — nothing is uploaded
           </span>
         </>
