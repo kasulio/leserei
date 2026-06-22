@@ -1,4 +1,4 @@
-import { isMarkdownStructural, unescapeMarkdownProse } from "../markdown";
+import { isMarkdownStructural } from "../markdown";
 import type { Book, Options } from "../types";
 
 const GLUED_PUNCT_BEFORE_EMPHASIS = /[.!?,;:\])}'"»…\u2026\u201D\u2019]/u;
@@ -42,7 +42,7 @@ function fixEmphasis(line: string): string {
 }
 
 function cleanEmphasis(line: string): string {
-  if (isMarkdownStructural(unescapeMarkdownProse(line.trim()))) return line;
+  if (isMarkdownStructural(line.trim())) return line;
   return fixEmphasis(line);
 }
 

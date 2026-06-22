@@ -1,11 +1,9 @@
+import type { Block, Doc, DocChapter, Inline } from "./doc";
 import type { SpineItem } from "./epub";
-import {
-  escapeMarkdown,
-  headingPrefix,
-  needsParagraphGap,
-  unescapeMarkdownProse,
-} from "./markdown";
-import type { Book, Chapter, OutputFormat } from "./types";
+import { documentBody, parseHtmlDocument } from "./html";
+import { docToMarkdownBook } from "./serialize/markdown";
+import { docToPlainBook } from "./serialize/plain";
+import type { Book, OutputFormat } from "./types";
 
 const BLOCK_TAGS = new Set([
   "p",
@@ -49,185 +47,34 @@ function hasNestedBlockElements(el: Element): boolean {
   for (const node of Array.from(el.childNodes)) {
     if (node.nodeType !== Node.ELEMENT_NODE) continue;
     const tag = tagName(node as Element);
-    // <br> is inline-ish; extract via extractInline/extractPlainText, not walk()
-    if (BLOCK_TAGS.has(tag) || tag === "ul" || tag === "ol" || tag === "hr")
+    if (BLOCK_TAGS.has(tag) || tag === "ul" || tag === "ol" || tag === "hr") {
       return true;
+    }
   }
   return false;
 }
 
-interface ListState {
-  type: "ul" | "ol";
-  num: number;
+function normalizeText(text: string): string {
+  return text.replace(/\s+/g, " ");
 }
 
-interface WalkState {
-  blockquoteDepth: number;
-  listStack: ListState[];
-  inPre: boolean;
-}
-
-export function extractBook(
-  spine: SpineItem[],
-  bookTitle = "",
-  format: OutputFormat = "markdown",
-): Book {
-  const chapters: Chapter[] = [];
-
-  for (const item of spine) {
-    const chapter = extractChapter(item.content, format);
-    if (chapter.lines.length === 0) continue;
-    chapters.push(chapter);
-  }
-
-  return { title: bookTitle, chapters };
-}
-
-function extractChapter(xhtml: string, format: OutputFormat): Chapter {
-  const doc = new DOMParser().parseFromString(xhtml, "application/xhtml+xml");
-
-  const parseError = doc.querySelector("parsererror");
-  if (parseError) {
-    const doc2 = new DOMParser().parseFromString(xhtml, "text/html");
-    return walkDoc(doc2, format);
-  }
-
-  return walkDoc(doc, format);
-}
-
-function walkDoc(doc: Document, format: OutputFormat): Chapter {
-  const lines: string[] = [];
-  let title = "";
-  const state: WalkState = { blockquoteDepth: 0, listStack: [], inPre: false };
-
-  function pushBlockLine(line: string): void {
-    if (!line) return;
-    const prev = lines[lines.length - 1];
-    if (prev !== undefined && prev !== "" && needsParagraphGap(prev, line)) {
-      lines.push("");
-    }
-    lines.push(line);
-  }
-
-  function walk(node: Node): void {
-    if (node.nodeType === Node.TEXT_NODE) return;
-    if (node.nodeType !== Node.ELEMENT_NODE) return;
-
-    const el = node as Element;
-    const tag = tagName(el);
-    if (SKIP_TAGS.has(tag)) return;
-
-    if (tag === "br") {
-      lines.push("");
-      return;
-    }
-
-    if (tag === "hr") {
-      pushBlockLine("* * *");
-      return;
-    }
-
-    if (tag === "blockquote") {
-      state.blockquoteDepth++;
-      for (const child of Array.from(el.childNodes)) walk(child);
-      state.blockquoteDepth--;
-      return;
-    }
-
-    if (tag === "ul" || tag === "ol") {
-      state.listStack.push({ type: tag, num: 0 });
-      for (const child of Array.from(el.childNodes)) walk(child);
-      state.listStack.pop();
-      return;
-    }
-
-    if (tag === "li") {
-      const list = state.listStack[state.listStack.length - 1];
-      const prefix = list
-        ? list.type === "ul"
-          ? "+ "
-          : `${++list.num}. `
-        : "+ ";
-      const indent = "\t".repeat(Math.max(0, state.listStack.length - 1));
-      const bq = "> ".repeat(state.blockquoteDepth);
-      const text =
-        format === "markdown"
-          ? extractInline(el, { inPre: state.inPre, inCode: false })
-          : extractPlainText(el).trim();
-      if (text) pushBlockLine(indent + bq + prefix + text);
-      return;
-    }
-
-    if (tag === "pre") {
-      state.inPre = true;
-      const text = el.textContent ?? "";
-      for (const line of text.split("\n")) {
-        pushBlockLine(
-          state.blockquoteDepth > 0 ? `>     ${line}` : `    ${line}`,
-        );
-      }
-      state.inPre = false;
-      return;
-    }
-
-    if (BLOCK_TAGS.has(tag)) {
-      if (format === "markdown" && isHeadingTag(tag)) {
-        const level = Number(tag[1]);
-        const text = extractInline(el, { inPre: false, inCode: false });
-        if (text) {
-          const bq = "> ".repeat(state.blockquoteDepth);
-          const line = bq + headingPrefix(level) + text;
-          pushBlockLine(line);
-          if (!title) title = unescapeMarkdownProse(text);
-        }
-        return;
-      }
-
-      if (hasNestedBlockElements(el)) {
-        for (const child of Array.from(el.childNodes)) walk(child);
-        return;
-      }
-
-      const text =
-        format === "markdown"
-          ? extractInline(el, { inPre: state.inPre, inCode: false })
-          : extractPlainText(el).trim();
-
-      if (text) {
-        const bq = "> ".repeat(state.blockquoteDepth);
-        pushBlockLine(bq + text);
-        if (!title && isHeadingTag(tag)) title = text;
-      }
-      return;
-    }
-
-    for (const child of Array.from(el.childNodes)) walk(child);
-  }
-
-  const body = doc.querySelector("body") ?? doc.documentElement;
-  for (const child of Array.from(body.childNodes)) {
-    walk(child);
-  }
-
-  return { title, lines };
-}
-
-interface InlineContext {
-  inPre: boolean;
-  inCode: boolean;
-}
-
-function formatText(text: string, ctx: InlineContext): string {
-  if (ctx.inPre) return text;
-  if (ctx.inCode) return text.replace(/\s+/g, " ");
-  return escapeMarkdown(text.replace(/\s+/g, " "));
-}
-
-function extractInline(el: Element, ctx: InlineContext): string {
+function textContent(inline: Inline[]): string {
   let text = "";
+  for (const node of inline) {
+    if (node.t === "text" || node.t === "code") text += node.value;
+    else if (node.t === "emph" || node.t === "strong" || node.t === "link") {
+      text += textContent(node.children);
+    } else if (node.t === "break") text += "\n";
+  }
+  return text.trim();
+}
+
+function extractInline(el: Element): Inline[] {
+  const inline: Inline[] = [];
   for (const node of Array.from(el.childNodes)) {
     if (node.nodeType === Node.TEXT_NODE) {
-      text += formatText(node.textContent ?? "", ctx);
+      const value = normalizeText(node.textContent ?? "");
+      if (value) inline.push({ t: "text", value });
       continue;
     }
     if (node.nodeType !== Node.ELEMENT_NODE) continue;
@@ -236,70 +83,108 @@ function extractInline(el: Element, ctx: InlineContext): string {
     const tag = tagName(child);
 
     if (tag === "br") {
-      text += "  \n";
-      continue;
+      inline.push({ t: "break" });
+    } else if (tag === "strong" || tag === "b") {
+      inline.push({ t: "strong", children: extractInline(child) });
+    } else if (tag === "em" || tag === "i" || tag === "cite") {
+      inline.push({ t: "emph", children: extractInline(child) });
+    } else if (tag === "code") {
+      inline.push({
+        t: "code",
+        value: normalizeText(child.textContent ?? "").trim(),
+      });
+    } else if (tag === "a") {
+      const title = child.getAttribute("title") ?? undefined;
+      inline.push({
+        t: "link",
+        href: child.getAttribute("href") ?? "",
+        title,
+        children: extractInline(child),
+      });
+    } else if (tag !== "img") {
+      inline.push(...extractInline(child));
     }
-
-    if (tag === "strong" || tag === "b") {
-      text += `**${extractInline(child, ctx)}**`;
-      continue;
-    }
-
-    if (tag === "em" || tag === "i" || tag === "cite") {
-      text += `*${extractInline(child, ctx)}*`;
-      continue;
-    }
-
-    if (tag === "code") {
-      text += `\`${extractInline(child, { ...ctx, inCode: true })}\``;
-      continue;
-    }
-
-    if (tag === "a") {
-      const href = child.getAttribute("href") ?? "";
-      const inner = extractInline(child, ctx);
-      if (href.includes("://")) {
-        const title = child.getAttribute("title");
-        const titlePart = title ? ` "${title.replace(/\s+/g, " ")}"` : "";
-        text += `[${inner}](${href}${titlePart})`;
-      } else {
-        text += inner;
-      }
-      continue;
-    }
-
-    if (tag === "img") {
-      continue;
-    }
-
-    if (BLOCK_TAGS.has(tag)) {
-      const inner = extractInline(child, ctx).trim();
-      if (inner) text += (text ? "\n" : "") + inner;
-      continue;
-    }
-
-    text += extractInline(child, ctx);
   }
-  return text.trim();
+  return inline;
 }
 
-function extractPlainText(el: Element): string {
-  let text = "";
-  for (const node of Array.from(el.childNodes)) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      text += (node.textContent ?? "").replace(/\s+/g, " ");
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      const child = node as Element;
-      const tag = tagName(child);
-      if (tag === "br") {
-        text += "\n";
-      } else if (BLOCK_TAGS.has(tag)) {
-        const inner = extractPlainText(child).trim();
-        if (inner) text += (text ? "\n" : "") + inner;
-      } else {
-        text += extractPlainText(child);
-      }
-    }
+function extractList(el: Element, ordered: boolean): Block | null {
+  const items: Inline[][] = [];
+  for (const child of Array.from(el.children)) {
+    if (tagName(child) !== "li") continue;
+    const inline = extractInline(child);
+    if (textContent(inline)) items.push(inline);
   }
-  return text;
+  return items.length ? { t: "list", ordered, items } : null;
+}
+
+function extractBlocksFromChildren(el: Element): Block[] {
+  const blocks: Block[] = [];
+  for (const child of Array.from(el.childNodes)) {
+    if (child.nodeType !== Node.ELEMENT_NODE) continue;
+    blocks.push(...extractBlocks(child as Element));
+  }
+  return blocks;
+}
+
+function extractBlocks(el: Element): Block[] {
+  const tag = tagName(el);
+  if (SKIP_TAGS.has(tag)) return [];
+
+  if (tag === "hr") return [{ t: "sceneBreak" }];
+
+  if (tag === "blockquote") {
+    const children = extractBlocksFromChildren(el);
+    return children.length ? [{ t: "quote", children }] : [];
+  }
+
+  if (tag === "ul" || tag === "ol") {
+    const list = extractList(el, tag === "ol");
+    return list ? [list] : [];
+  }
+
+  if (tag === "pre") {
+    const value = el.textContent ?? "";
+    return value ? [{ t: "codeBlock", value }] : [];
+  }
+
+  if (isHeadingTag(tag)) {
+    const inline = extractInline(el);
+    return textContent(inline)
+      ? [{ t: "heading", level: Number(tag[1]), inline }]
+      : [];
+  }
+
+  if (BLOCK_TAGS.has(tag)) {
+    if (hasNestedBlockElements(el)) return extractBlocksFromChildren(el);
+    const inline = extractInline(el);
+    return textContent(inline) ? [{ t: "para", inline }] : [];
+  }
+
+  return extractBlocksFromChildren(el);
+}
+
+function extractChapterDoc(item: SpineItem): DocChapter {
+  const doc = item.parsed ?? parseHtmlDocument(item.content);
+  const body = documentBody(doc);
+  const blocks = extractBlocksFromChildren(body);
+  const heading = blocks.find((block) => block.t === "heading");
+  const title = heading?.t === "heading" ? textContent(heading.inline) : "";
+  return { title, blocks };
+}
+
+export function extractDoc(spine: SpineItem[], bookTitle = ""): Doc {
+  const chapters = spine
+    .map((item) => extractChapterDoc(item))
+    .filter((chapter) => chapter.blocks.length > 0);
+  return { title: bookTitle, chapters };
+}
+
+export function extractBook(
+  spine: SpineItem[],
+  bookTitle = "",
+  format: OutputFormat = "markdown",
+): Book {
+  const doc = extractDoc(spine, bookTitle);
+  return format === "plain" ? docToPlainBook(doc) : docToMarkdownBook(doc);
 }

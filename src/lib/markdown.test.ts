@@ -1,15 +1,15 @@
 import { expect, test } from "bun:test";
 
 import {
-  escapeMarkdown,
   headingPrefix,
   isListItemLine,
+  isSceneBreakLine,
   needsParagraphGap,
 } from "./markdown";
 
-test("escapeMarkdown escapes special chars", () => {
-  expect(escapeMarkdown("a * b")).toBe("a \\* b");
-  expect(escapeMarkdown("[link](url)")).toBe("\\[link\\]\\(url\\)");
+test("isSceneBreakLine recognises escaped asterisk dividers", () => {
+  expect(isSceneBreakLine("\\* \\* \\*")).toBe(true);
+  expect(isSceneBreakLine("\\* \\* \\* \\*")).toBe(true);
 });
 
 test("headingPrefix returns correct hashes", () => {

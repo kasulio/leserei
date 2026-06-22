@@ -1,4 +1,5 @@
 import type { SpineItem } from "./epub";
+import { documentBody, parseHtmlDocument } from "./html";
 
 const FRONT_MATTER_HREF =
   /(?:^|\/)(nav|toc|cover|title-?page|titlepage|copyright|dedication|halftitle|half-?title|contents?|colophon|imprint|acknowledgments?|epigraph|praises?|alsoby|also-by|about-?the-?author|frontmatter|front-?matter|fm\d|prelim)(?:[._-]|\.|$)/i;
@@ -8,17 +9,24 @@ const SKIP_PROPERTIES = new Set(["nav", "cover-image", "cover"]);
 const TOC_HEADING =
   /^(table of contents|contents|inhaltsverzeichnis|table des mati[eè]res)$/i;
 
-function parseBody(xhtml: string): HTMLElement {
-  const doc = new DOMParser().parseFromString(xhtml, "application/xhtml+xml");
-  if (doc.querySelector("parsererror")) {
-    const html = new DOMParser().parseFromString(xhtml, "text/html");
-    return (html.querySelector("body") ?? html.documentElement) as HTMLElement;
-  }
-  return (doc.querySelector("body") ?? doc.documentElement) as HTMLElement;
+// Treat a document as nav-only when more than 90% of its visible text is inside
+// <nav>; this catches generated TOC files while allowing normal chapters with
+// incidental navigation links.
+const NAV_TEXT_RATIO_THRESHOLD = 0.9;
+
+// Compact TOC pages often consist almost entirely of links. Require at least
+// 45% link text so ordinary short chapters with a few references are kept.
+const TOC_LINK_TEXT_RATIO_THRESHOLD = 0.45;
+
+// Keep large linked documents: real chapters can contain many links, while TOC
+// files are usually short.
+const MAX_TOC_TEXT_LENGTH = 8000;
+
+function bodyFromSource(xhtml: string): Element {
+  return documentBody(parseHtmlDocument(xhtml));
 }
 
-export function isNavDocument(xhtml: string): boolean {
-  const body = parseBody(xhtml);
+function isNavBody(body: Element): boolean {
   const nav = body.querySelector("nav");
   if (!nav) return false;
 
@@ -27,7 +35,7 @@ export function isNavDocument(xhtml: string): boolean {
   if (
     navText.length > 0 &&
     bodyText.length > 0 &&
-    navText.length / bodyText.length > 0.9
+    navText.length / bodyText.length > NAV_TEXT_RATIO_THRESHOLD
   ) {
     return true;
   }
@@ -42,9 +50,11 @@ export function isNavDocument(xhtml: string): boolean {
   );
 }
 
-export function isTableOfContentsPage(xhtml: string): boolean {
-  const body = parseBody(xhtml);
+export function isNavDocument(xhtml: string): boolean {
+  return isNavBody(bodyFromSource(xhtml));
+}
 
+function isTableOfContentsBody(body: Element): boolean {
   for (const el of body.querySelectorAll("*")) {
     const epubType = el.getAttribute("epub:type") ?? "";
     if (/\btoc\b/i.test(epubType)) return true;
@@ -57,14 +67,23 @@ export function isTableOfContentsPage(xhtml: string): boolean {
 
   const links = body.querySelectorAll("a[href]");
   const text = (body.textContent ?? "").replace(/\s+/g, " ").trim();
-  if (links.length >= 4 && text.length > 0 && text.length < 8000) {
+  if (
+    links.length >= 4 &&
+    text.length > 0 &&
+    text.length < MAX_TOC_TEXT_LENGTH
+  ) {
     const linkText = Array.from(links)
       .map((a) => (a.textContent ?? "").replace(/\s+/g, " ").trim())
       .join(" ");
-    if (linkText.length / text.length > 0.45) return true;
+    if (linkText.length / text.length > TOC_LINK_TEXT_RATIO_THRESHOLD)
+      return true;
   }
 
   return false;
+}
+
+export function isTableOfContentsPage(xhtml: string): boolean {
+  return isTableOfContentsBody(bodyFromSource(xhtml));
 }
 
 export function isFrontMatterItem(item: SpineItem): boolean {
@@ -74,7 +93,8 @@ export function isFrontMatterItem(item: SpineItem): boolean {
   const base = item.href.split("/").pop() ?? item.href;
   if (FRONT_MATTER_HREF.test(base)) return true;
 
-  return isNavDocument(item.content) || isTableOfContentsPage(item.content);
+  const body = documentBody(item.parsed ?? parseHtmlDocument(item.content));
+  return isNavBody(body) || isTableOfContentsBody(body);
 }
 
 export function filterSpine(

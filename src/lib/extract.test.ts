@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 
 import type { SpineItem } from "./epub";
 import { extractBook } from "./extract";
+import { parseHtmlDocument } from "./html";
 import { bookToText, runPipeline } from "./pipeline";
 import { PRESETS } from "./presets";
 
@@ -10,6 +11,7 @@ function spine(html: string, overrides: Partial<SpineItem> = {}): SpineItem[] {
     {
       href: "ch1.xhtml",
       content: html,
+      parsed: parseHtmlDocument(html),
       linear: true,
       properties: [],
       ...overrides,
@@ -89,8 +91,8 @@ test("markdown: wrapped dash list with pagebreak spans", () => {
     "+ Alpha item.",
     "+ Beta item with extra words.",
     "+ Gamma item after page break.",
-    "+ Delta item \\(parenthetical aside.\\)",
-    "+ Epsilon item \\(maybe\\).",
+    "+ Delta item (parenthetical aside.)",
+    "+ Epsilon item (maybe).",
   ]);
 });
 
@@ -100,7 +102,7 @@ test("markdown: plus sign in prose is not escaped after pipeline", () => {
     "",
     "markdown",
   );
-  expect(book.chapters[0]!.lines[0]).toBe("2\\+2 equals 4.");
+  expect(book.chapters[0]!.lines[0]).toBe("2+2 equals 4.");
 
   const processed = runPipeline(
     book,

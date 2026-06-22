@@ -3,6 +3,7 @@ import { expect, test } from "bun:test";
 import type { SpineItem } from "./epub";
 import { extractBook } from "./extract";
 import { filterSpine, isFrontMatterItem } from "./frontMatter";
+import { parseHtmlDocument } from "./html";
 
 function item(
   href: string,
@@ -12,6 +13,7 @@ function item(
   return {
     href,
     content,
+    parsed: parseHtmlDocument(content),
     linear: true,
     properties: [],
     ...overrides,

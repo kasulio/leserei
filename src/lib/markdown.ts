@@ -1,13 +1,3 @@
-/** Escape text for Markdown (Calibre markdownml.prepare_string_for_markdown). */
-export function escapeMarkdown(text: string): string {
-  return text.replace(/([\\`*_{}[\]()#+!])/g, "\\$1");
-}
-
-/** Remove backslash escapes that are unnecessary in prose markdown output. */
-export function unescapeMarkdownProse(text: string): string {
-  return text.replace(/\\([!()*+])/g, "$1");
-}
-
 export function headingPrefix(level: number): string {
   return `${"#".repeat(Math.min(Math.max(level, 1), 6))} `;
 }

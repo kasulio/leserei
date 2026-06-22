@@ -3,7 +3,6 @@ import { italicCleanup } from "./heuristics/italicCleanup";
 import { normalize } from "./heuristics/normalize";
 import { standardizeSceneBreaks } from "./heuristics/standardizeSceneBreaks";
 import { stripInvisible } from "./heuristics/stripInvisible";
-import { unescapeMarkdown } from "./heuristics/unescapeMarkdown";
 import { unwrap } from "./heuristics/unwrap";
 import { PRESETS } from "./presets";
 import type {
@@ -47,14 +46,13 @@ export function defaultOptions(): Options {
 export function runPipeline(
   book: Book,
   opts: Options,
-  format: OutputFormat = "markdown",
+  _format: OutputFormat = "markdown",
 ): Book {
   let current = structuredClone(book);
   for (const step of PIPELINE) {
     if (!opts[step.id]) continue;
     current = step.fn(current, opts);
   }
-  if (format === "markdown") current = unescapeMarkdown(current, opts);
   return current;
 }
 

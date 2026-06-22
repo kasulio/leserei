@@ -1,7 +1,7 @@
 import { mreplace } from "../mreplace";
 import type { Book, Options } from "../types";
 
-export const DEFAULT_MAX_BLANK_LINES = 4;
+export const DEFAULT_MAX_BLANK_LINES = 2;
 
 // Calibre-compatible set (entities + Unicode literals).
 const CALIBRE: Record<string, string> = {

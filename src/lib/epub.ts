@@ -1,8 +1,11 @@
 import JSZip from "jszip";
 
+import { parseHtmlDocument } from "./html";
+
 export interface SpineItem {
   href: string; // path relative to OPF directory
   content: string; // raw XHTML string
+  parsed: Document;
   linear: boolean;
   properties: string[];
 }
@@ -37,6 +40,7 @@ export async function loadEpub(file: File): Promise<SpineItem[]> {
     items.push({
       href: entry.href,
       content,
+      parsed: parseHtmlDocument(content),
       linear: entry.linear,
       properties: entry.properties,
     });

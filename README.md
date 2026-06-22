@@ -1,21 +1,32 @@
-# bun-react-template
+# Leserei
 
-To install dependencies:
+Leserei is a local EPUB to clean text/Markdown converter. It loads an `.epub`,
+filters optional front matter, extracts book structure from XHTML, applies
+reading cleanup heuristics, and exports plain text or Markdown.
+
+## Development
+
+Install dependencies:
 
 ```bash
 bun install
 ```
 
-To start a development server:
+Run the app:
 
 ```bash
 bun dev
 ```
 
-To run for production:
+Verify changes:
 
 ```bash
-bun start
+bun test
+bun run typecheck
 ```
 
-This project was created using `bun init` in bun v1.3.12. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+Build for production:
+
+```bash
+bun run build
+```
