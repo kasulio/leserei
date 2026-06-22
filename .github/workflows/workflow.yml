@@ -1,0 +1,46 @@
+name: CI and Deploy
+
+on:
+    push:
+        branches: ["main"]
+    pull_request:
+        branches: ["main"]
+
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+
+concurrency:
+    group: pages
+    cancel-in-progress: false
+
+jobs:
+    build:
+        name: build
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: oven-sh/setup-bun@v2
+
+            - run: bun install
+            - run: bun run build
+
+            - name: Upload Pages artifact
+              if: github.event_name == 'push'
+              uses: actions/upload-pages-artifact@v3
+              with:
+                  path: dist
+
+    deploy:
+        name: deploy
+        needs: build
+        if: github.event_name == 'push'
+        runs-on: ubuntu-latest
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - name: Deploy to GitHub Pages
+              id: deployment
+              uses: actions/deploy-pages@v4
