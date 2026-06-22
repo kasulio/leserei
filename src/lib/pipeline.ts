@@ -1,6 +1,7 @@
 import { dehyphenate } from "./heuristics/dehyphenate";
 import { italicCleanup } from "./heuristics/italicCleanup";
 import { normalize } from "./heuristics/normalize";
+import { standardizeSceneBreaks } from "./heuristics/standardizeSceneBreaks";
 import { stripInvisible } from "./heuristics/stripInvisible";
 import { unescapeMarkdown } from "./heuristics/unescapeMarkdown";
 import { unwrap } from "./heuristics/unwrap";
@@ -16,6 +17,7 @@ import type {
 const PIPELINE: Array<{ id: StepId; fn: TransformStep }> = [
   { id: "normalize", fn: normalize },
   { id: "stripInvisible", fn: stripInvisible },
+  { id: "standardizeSceneBreaks", fn: standardizeSceneBreaks },
   { id: "italicCleanup", fn: italicCleanup },
   { id: "dehyphenate", fn: dehyphenate },
   { id: "unwrap", fn: unwrap },

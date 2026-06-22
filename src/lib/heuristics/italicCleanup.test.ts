@@ -38,3 +38,23 @@ test("leaves clean emphasis unchanged", () => {
   const result = italicCleanup(book(["Already *fine* here."]), opts);
   expect(result.chapters[0]!.lines[0]!).toBe("Already *fine* here.");
 });
+
+test("spaces emphasis after glued word", () => {
+  const result = italicCleanup(book(["and* what Kings.*"]), opts);
+  expect(result.chapters[0]!.lines[0]!).toBe("and *what Kings.*");
+});
+
+test("spaces emphasis before glued word", () => {
+  const result = italicCleanup(book(["*hello*world"]), opts);
+  expect(result.chapters[0]!.lines[0]!).toBe("*hello* world");
+});
+
+test("spaces glued bold", () => {
+  const result = italicCleanup(book(["say** loud **now"]), opts);
+  expect(result.chapters[0]!.lines[0]!).toBe("say **loud** now");
+});
+
+test("skips apostrophe contractions", () => {
+  const result = italicCleanup(book(["don't*word*"]), opts);
+  expect(result.chapters[0]!.lines[0]!).toBe("don't*word*");
+});

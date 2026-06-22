@@ -12,17 +12,19 @@ const LIGHT: Options = {
   italicCleanup: false,
   dehyphenate: false,
   unwrap: false,
-  stripInvisible: false,
+  stripInvisible: true,
+  standardizeSceneBreaks: false,
   removeFrontMatter: false,
   maxBlankLines: 2,
 };
 
 const READING: Options = {
   normalize: true,
-  italicCleanup: false,
+  italicCleanup: true,
   dehyphenate: true,
   unwrap: true,
   stripInvisible: true,
+  standardizeSceneBreaks: true,
   removeFrontMatter: false,
   maxBlankLines: 2,
 };
@@ -33,7 +35,8 @@ const FULL: Options = {
   dehyphenate: true,
   unwrap: true,
   stripInvisible: true,
-  removeFrontMatter: false,
+  standardizeSceneBreaks: true,
+  removeFrontMatter: true,
   maxBlankLines: 2,
 };
 
@@ -47,7 +50,7 @@ export const PRESETS: Preset[] = [
   {
     id: "reading",
     label: "Reading format",
-    description: "Also unwraps paragraphs and fixes hyphenation",
+    description: "Also unwraps paragraphs, fixes hyphenation, and scene breaks",
     options: READING,
   },
   {

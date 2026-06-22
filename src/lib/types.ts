@@ -16,6 +16,7 @@ export interface Options {
   dehyphenate: boolean;
   unwrap: boolean;
   stripInvisible: boolean;
+  standardizeSceneBreaks: boolean;
   removeFrontMatter: boolean;
   /** Max consecutive blank lines per chapter (normalize step). */
   maxBlankLines: number;

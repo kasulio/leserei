@@ -12,9 +12,28 @@ export function headingPrefix(level: number): string {
   return `${"#".repeat(Math.min(Math.max(level, 1), 6))} `;
 }
 
+export const SCENE_BREAK = "* * *";
+
+function asteriskDivider(line: string): boolean {
+  return /^\*(\s*\*){2,}$/.test(line);
+}
+
+/** Lines that are only scene-divider ornaments (not prose). */
+export function isSceneBreakLine(line: string): boolean {
+  const t = line.trim();
+  if (t === SCENE_BREAK) return true;
+  if (asteriskDivider(t)) return true;
+  const unescaped = t.replace(/\\\*/g, "*");
+  if (unescaped !== t && asteriskDivider(unescaped)) return true;
+  if (/^[-_#~=](\s*[-_#~=]){2,}$/.test(t)) return true;
+  if (/^\.{3,}$/.test(t)) return true;
+  if (/^[·•](\s*[·•]){2,}$/.test(t)) return true;
+  return false;
+}
+
 export function isMarkdownStructural(line: string): boolean {
   if (line === "") return true;
-  if (line === "* * *") return true;
+  if (isSceneBreakLine(line)) return true;
   if (/^#{1,6}\s/.test(line)) return true;
   if (/^>\s?/.test(line)) return true;
   if (/^(\+ |\d+\. )/.test(line)) return true;

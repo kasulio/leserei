@@ -10,12 +10,17 @@ export const STEP_UI: StepUi[] = [
   {
     id: "normalize",
     label: "Fix punctuation & spacing",
-    description: "Smart quotes, dashes, whitespace, and scene dividers",
+    description: "Smart quotes, dashes, and whitespace",
   },
   {
     id: "stripInvisible",
     label: "Remove invisible characters",
     description: "Soft hyphens and zero-width formatting characters",
+  },
+  {
+    id: "standardizeSceneBreaks",
+    label: "Standardize scene breaks",
+    description: "Convert dividers like *** and --- to * * *",
   },
   {
     id: "italicCleanup",
