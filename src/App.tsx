@@ -330,8 +330,8 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] transition-colors duration-150">
-      <header className="sticky top-0 z-20 border-[var(--border)] border-b bg-[var(--bg)]/90 px-4 py-4 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-6xl items-start justify-between gap-4">
+      <header className="sticky top-0 z-20 border-[var(--border)] border-b bg-[var(--bg)]/90 py-4 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4">
           <div>
             <h1 className="flex items-center gap-1.5 font-bold font-display text-2xl tracking-tight">
               Leserei
@@ -436,7 +436,7 @@ export function App() {
 
             <div className="flex min-h-0 flex-1 flex-col">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-0.5">
+                <div className="flex items-center gap-0.5 rounded-lg bg-[var(--bg)] p-1">
                   <button
                     type="button"
                     onClick={() => setPreviewMode("output")}

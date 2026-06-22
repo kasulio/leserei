@@ -11,7 +11,5 @@ const app = (
 );
 
 // https://bun.com/docs/bundler/hot-reloading#import-meta-hot-data
-if (!import.meta.hot.data.root) {
-  import.meta.hot.data.root = createRoot(elem);
-}
-import.meta.hot.data.root.render(app);
+// biome-ignore lint/suspicious/noAssignInExpressions: its from bun documentation, should be okay
+(import.meta.hot.data.root ??= createRoot(elem)).render(app);
