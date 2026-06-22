@@ -1,0 +1,33 @@
+{
+  "name": "bun-react-template",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun src/index.html",
+    "start": "NODE_ENV=production bun src/index.ts",
+    "build": "bun run build.ts",
+    "typecheck": "bun --bun tsgo --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "fix": "biome check --write . && bun --bun tsgo --noEmit"
+  },
+  "dependencies": {
+    "bun-plugin-tailwind": "^0.1.2",
+    "jszip": "^3.10.1",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.0",
+    "@happy-dom/global-registrator": "^20.10.3",
+    "@types/bun": "latest",
+    "@types/jszip": "^3.4.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@typescript/native-preview": "^7.0.0-dev.20260614.1",
+    "happy-dom": "^20.10.3",
+    "tailwindcss": "^4.3.1"
+  }
+}
