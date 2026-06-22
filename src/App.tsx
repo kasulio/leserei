@@ -218,7 +218,7 @@ function ControlsPanel({
       </div>
 
       <button type="button" onClick={onDownload} className="btn-primary w-full">
-        Download .{outputFormat === "markdown" ? "md" : "txt"}
+        Download .txt
       </button>
     </div>
   );
@@ -227,7 +227,7 @@ function ControlsPanel({
 export function App() {
   const [book, setBook] = useState<Book | null>(null);
   const [filename, setFilename] = useState("");
-  const [presetId, setPresetId] = useState("default");
+  const [presetId, setPresetId] = useState("reading");
   const [opts, setOpts] = useState<Options>(defaultOptions);
   const [outputFormat, setOutputFormat] = useState<OutputFormat>("markdown");
   const [error, setError] = useState<string | null>(null);
@@ -237,6 +237,7 @@ export function App() {
   const [previewMode, setPreviewMode] = useState<"output" | "html">("output");
   const [sourceIndex, setSourceIndex] = useState(0);
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [editedText, setEditedText] = useState<string | null>(null);
 
   useEffect(() => {
     if (!spine) return;
@@ -248,6 +249,19 @@ export function App() {
     const result = runPipeline(book, opts, outputFormat);
     return bookToText(result, outputFormat);
   }, [book, opts, outputFormat]);
+
+  const displayText = editedText ?? processedText ?? "";
+  const hasEdits = editedText !== null;
+
+  const withEditGuard = useCallback(
+    (action: () => void) => {
+      if (hasEdits && !window.confirm("Your edits will be lost. Continue?")) {
+        return;
+      }
+      action();
+    },
+    [hasEdits],
+  );
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.name.endsWith(".epub")) {
@@ -263,6 +277,7 @@ export function App() {
       setFilename(bookTitle);
       setSourceIndex(0);
       setPreviewMode("output");
+      setEditedText(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -288,34 +303,54 @@ export function App() {
     [handleFile],
   );
 
-  const applyPreset = useCallback((id: string) => {
-    if (id === "custom") return;
-    const preset = PRESETS.find((p) => p.id === id);
-    if (!preset) return;
-    setPresetId(id);
-    setOpts({ ...preset.options });
-  }, []);
+  const applyPreset = useCallback(
+    (id: string) => {
+      if (id === "custom") return;
+      const preset = PRESETS.find((p) => p.id === id);
+      if (!preset) return;
+      withEditGuard(() => {
+        setEditedText(null);
+        setPresetId(id);
+        setOpts({ ...preset.options });
+      });
+    },
+    [withEditGuard],
+  );
 
-  const toggleStep = useCallback((id: StepId) => {
-    setPresetId("custom");
-    setOpts((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
+  const toggleStep = useCallback(
+    (id: StepId) => {
+      withEditGuard(() => {
+        setEditedText(null);
+        setPresetId("custom");
+        setOpts((prev) => ({ ...prev, [id]: !prev[id] }));
+      });
+    },
+    [withEditGuard],
+  );
+
+  const handleOutputFormatChange = useCallback(
+    (format: OutputFormat) => {
+      if (format === outputFormat) return;
+      withEditGuard(() => {
+        setEditedText(null);
+        setOutputFormat(format);
+      });
+    },
+    [outputFormat, withEditGuard],
+  );
 
   const download = useCallback(() => {
-    if (!processedText) return;
-    const ext = outputFormat === "markdown" ? "md" : "txt";
-    const mime =
-      outputFormat === "markdown"
-        ? "text/markdown;charset=utf-8"
-        : "text/plain;charset=utf-8";
-    const blob = new Blob([processedText], { type: mime });
+    if (!displayText) return;
+    const blob = new Blob([displayText], {
+      type: "text/plain;charset=utf-8",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${filename || "output"}.${ext}`;
+    a.download = `${filename || "output"}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [processedText, filename, outputFormat]);
+  }, [displayText, filename]);
 
   const sourceHtml = spine?.[sourceIndex] ?? null;
   const activePreset =
@@ -325,7 +360,7 @@ export function App() {
 
   const previewMeta =
     previewMode === "output"
-      ? `${book?.chapters.length ?? 0} chapters · ${processedText?.length.toLocaleString() ?? 0} chars`
+      ? `${book?.chapters.length ?? 0} chapters · ${displayText.length.toLocaleString()} chars${hasEdits ? " · edited" : ""}`
       : `${spine?.length ?? 0} files · ${sourceHtml?.content.length.toLocaleString() ?? 0} chars`;
 
   return (
@@ -422,7 +457,7 @@ export function App() {
             <aside className="hidden lg:block">
               <ControlsPanel
                 outputFormat={outputFormat}
-                onOutputFormatChange={setOutputFormat}
+                onOutputFormatChange={handleOutputFormatChange}
                 presetId={presetId}
                 onPresetChange={applyPreset}
                 activePreset={activePreset}
@@ -440,21 +475,32 @@ export function App() {
                   <button
                     type="button"
                     onClick={() => setPreviewMode("output")}
-                    className={`btn-ghost min-h-9 ${previewMode === "output" ? "btn-ghost-active" : ""}`}
+                    className={`btn-ghost min-h-9 ${previewMode === "output" ? "btn-ghost-active-output" : ""}`}
                   >
                     Output
                   </button>
                   <button
                     type="button"
                     onClick={() => setPreviewMode("html")}
-                    className={`btn-ghost min-h-9 ${previewMode === "html" ? "btn-ghost-active" : ""}`}
+                    className={`btn-ghost min-h-9 ${previewMode === "html" ? "btn-ghost-active-source" : ""}`}
                   >
                     Source
                   </button>
                 </div>
-                <span className="text-[var(--text-muted)] text-xs">
-                  {previewMeta}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {previewMode === "output" && hasEdits && (
+                    <button
+                      type="button"
+                      onClick={() => setEditedText(null)}
+                      className="text-[var(--text-muted)] text-xs underline-offset-2 hover:text-[var(--text)] hover:underline"
+                    >
+                      Reset edits
+                    </button>
+                  )}
+                  <span className="text-[var(--text-muted)] text-xs">
+                    {previewMeta}
+                  </span>
+                </div>
               </div>
 
               {previewMode === "html" && spine && spine.length > 0 && (
@@ -478,12 +524,22 @@ export function App() {
               )}
 
               <div
-                className="min-h-[50vh] flex-1 overflow-auto whitespace-pre-wrap rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm leading-relaxed lg:max-h-[calc(100vh-14rem)] lg:min-h-[calc(100vh-14rem)]"
+                className="min-h-[50vh] flex-1 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm leading-relaxed lg:max-h-[calc(100vh-14rem)] lg:min-h-[calc(100vh-14rem)]"
                 style={{ boxShadow: "var(--shadow-inset)" }}
               >
-                {previewMode === "output"
-                  ? (processedText ?? "")
-                  : (sourceHtml?.content ?? "")}
+                {previewMode === "output" ? (
+                  <textarea
+                    value={displayText}
+                    onChange={(e) => setEditedText(e.target.value)}
+                    spellCheck={false}
+                    className="editor-field block min-h-[calc(50vh-2rem)] whitespace-pre-wrap lg:min-h-[calc(100vh-16rem)]"
+                    aria-label="Book text"
+                  />
+                ) : (
+                  <div className="whitespace-pre-wrap">
+                    {sourceHtml?.content ?? ""}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -494,7 +550,7 @@ export function App() {
         <div className="fixed inset-x-0 bottom-0 z-20 border-[var(--border)] border-t bg-[var(--bg)]/95 px-4 py-3 backdrop-blur-sm lg:hidden">
           <ControlsPanel
             outputFormat={outputFormat}
-            onOutputFormatChange={setOutputFormat}
+            onOutputFormatChange={handleOutputFormatChange}
             presetId={presetId}
             onPresetChange={applyPreset}
             activePreset={activePreset}

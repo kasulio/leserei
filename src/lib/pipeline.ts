@@ -25,7 +25,7 @@ export const CHAPTER_GAP = "\n\n\n";
 export const CHAPTER_SEPARATOR = `${CHAPTER_GAP}* * *${CHAPTER_GAP}`;
 
 export function defaultOptions(): Options {
-  return { ...PRESETS[0]!.options };
+  return { ...PRESETS.find((p) => p.id === "reading")!.options };
 }
 
 export function runPipeline(
