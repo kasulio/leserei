@@ -19,10 +19,12 @@ function escapeLineStart(line: string): string {
     .replace(/^(\d+)\. /, "$1\\. ");
 }
 
-function asteriskDividerText(inline: Inline[]): string | null {
+function ornamentLineText(inline: Inline[]): string | null {
   const text = inlineText(inline);
   const unescaped = text.trim().replace(/\\\*/g, "*");
-  return isAsteriskDividerLine(unescaped) ? unescaped : null;
+  if (isAsteriskDividerLine(unescaped)) return unescaped;
+  if (unescaped === "*") return unescaped;
+  return null;
 }
 
 export function serializeMarkdownInline(inline: Inline[]): string {
@@ -74,6 +76,8 @@ function renderListItem(
 
 function renderBlock(block: Block): RenderedBlock {
   if (block.t === "heading") {
+    const ornament = ornamentLineText(block.inline);
+    if (ornament) return { kind: block.t, lines: [ornament] };
     const text = serializeMarkdownInline(block.inline);
     return {
       kind: block.t,
@@ -81,8 +85,8 @@ function renderBlock(block: Block): RenderedBlock {
     };
   }
   if (block.t === "para") {
-    const divider = asteriskDividerText(block.inline);
-    if (divider) return { kind: block.t, lines: [divider] };
+    const ornament = ornamentLineText(block.inline);
+    if (ornament) return { kind: block.t, lines: [ornament] };
     const text = serializeMarkdownInline(block.inline);
     return { kind: block.t, lines: text ? [escapeLineStart(text)] : [] };
   }

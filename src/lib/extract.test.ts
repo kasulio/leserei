@@ -228,3 +228,13 @@ test("processed preset spaces emphasis after punctuation", () => {
     ),
   ).toBe('She paused. *"Hello there!*');
 });
+
+test("processed preset keeps emphasis glued to opening quote", () => {
+  expect(
+    render(
+      `<html><body><p>"<em>You</em> want to tell me, and I have no objection to hearing it."</p></body></html>`,
+      "markdown",
+      PRESETS.find((p) => p.id === "processed")!.options,
+    ),
+  ).toBe('"*You* want to tell me, and I have no objection to hearing it."');
+});

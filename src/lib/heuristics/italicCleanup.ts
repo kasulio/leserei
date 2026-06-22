@@ -3,6 +3,19 @@ import { inlineText, mapInlineTree } from "../docTransforms";
 import type { TransformStep } from "../types";
 
 const GLUED_PUNCT_BEFORE_EMPHASIS = /[.!?,;:\])}'"»…\u2026\u201D\u2019]/u;
+const OPENING_QUOTE = /["\u201C«\u2018]/u;
+
+function isOpeningQuoteBeforeEmphasis(
+  char: string,
+  prevValue: string,
+): boolean {
+  if (OPENING_QUOTE.test(char)) return true;
+  if (char === "'") {
+    const prev = prevValue.at(-2);
+    return !prev || /[\s([]/u.test(prev);
+  }
+  return false;
+}
 
 function trimEmphasis(inline: Inline[]): Inline[] {
   return mapInlineTree(inline, (node) => {
@@ -29,6 +42,7 @@ function needsSpaceBefore(prev: Inline | undefined): boolean {
   if (prev?.t !== "text") return false;
   const before = prev.value.at(-1);
   if (!before || /\s/u.test(before)) return false;
+  if (isOpeningQuoteBeforeEmphasis(before, prev.value)) return false;
   if (GLUED_PUNCT_BEFORE_EMPHASIS.test(before)) return true;
   if (!/\w/u.test(before)) return false;
   return prev.value.length < 2 || prev.value.at(-2) !== "'";

@@ -111,3 +111,15 @@ test("spaces emphasis after glued punctuation", () => {
   );
   expect(render(result)).toBe('She paused. *"Hello there!*');
 });
+
+test("does not space emphasis after opening quote", () => {
+  const result = italicCleanup(
+    para([
+      { t: "text", value: '"' },
+      { t: "emph", children: [{ t: "text", value: "You" }] },
+      { t: "text", value: " want to tell me." },
+    ]),
+    opts,
+  );
+  expect(render(result)).toBe('"*You* want to tell me.');
+});

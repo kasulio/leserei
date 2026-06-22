@@ -9,6 +9,11 @@ function standardizeBlock(block: Block): Block {
   if (block.t === "para" && isSceneBreakLine(inlineText(block.inline))) {
     return { t: "sceneBreak" };
   }
+  if (block.t === "heading") {
+    const text = inlineText(block.inline).trim().replace(/\\\*/g, "*");
+    if (isSceneBreakLine(text)) return { t: "sceneBreak" };
+    if (text === "*") return { t: "para", inline: [{ t: "text", value: "*" }] };
+  }
   if (block.t === "quote") {
     return { ...block, children: standardizeBlocks(block.children) };
   }

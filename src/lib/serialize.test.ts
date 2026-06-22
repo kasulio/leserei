@@ -100,3 +100,58 @@ test("markdown unescapes escaped asterisk divider paragraphs", () => {
 
   expect(serializeDoc(dividerDoc, "markdown")).toBe("* * * *");
 });
+
+test("markdown preserves asterisk ornaments in headings", () => {
+  const doc: Doc = {
+    title: "",
+    chapters: [
+      {
+        title: "",
+        blocks: [
+          {
+            t: "heading",
+            level: 2,
+            inline: [{ t: "text", value: "* * *" }],
+          },
+          {
+            t: "heading",
+            level: 2,
+            inline: [{ t: "text", value: "JANE AUSTEN" }],
+          },
+          {
+            t: "heading",
+            level: 2,
+            inline: [{ t: "text", value: "*" }],
+          },
+        ],
+      },
+    ],
+  };
+
+  expect(serializeDoc(doc, "markdown")).toBe("* * *\n\n## JANE AUSTEN\n\n*");
+});
+
+test("markdown unescapes escaped asterisk ornaments in headings", () => {
+  const doc: Doc = {
+    title: "",
+    chapters: [
+      {
+        title: "",
+        blocks: [
+          {
+            t: "heading",
+            level: 2,
+            inline: [{ t: "text", value: String.raw`\* \* \*` }],
+          },
+          {
+            t: "heading",
+            level: 2,
+            inline: [{ t: "text", value: String.raw`\*` }],
+          },
+        ],
+      },
+    ],
+  };
+
+  expect(serializeDoc(doc, "markdown")).toBe("* * *\n\n*");
+});

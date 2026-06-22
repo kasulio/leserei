@@ -78,3 +78,37 @@ test("leaves non-divider paragraphs unchanged", () => {
   );
   expect(render(result)).toBe("Chapter opener.\n\nShe looked away...");
 });
+
+test("normalises asterisk ornament headings to scene breaks or paras", () => {
+  const doc = {
+    title: "",
+    chapters: [
+      {
+        title: "",
+        blocks: [
+          {
+            t: "heading" as const,
+            level: 2,
+            inline: [{ t: "text" as const, value: "* * *" }],
+          },
+          {
+            t: "heading" as const,
+            level: 2,
+            inline: [{ t: "text" as const, value: "Author" }],
+          },
+          {
+            t: "heading" as const,
+            level: 2,
+            inline: [{ t: "text" as const, value: "*" }],
+          },
+        ],
+      },
+    ],
+  };
+  const result = standardizeSceneBreaks(doc, opts);
+  expect(result.chapters[0]?.blocks).toEqual([
+    { t: "sceneBreak" },
+    { t: "heading", level: 2, inline: [{ t: "text", value: "Author" }] },
+    { t: "para", inline: [{ t: "text", value: "*" }] },
+  ]);
+});
