@@ -10,6 +10,7 @@ test("unescapeMarkdownProse strips escapes before ! and parens", () => {
     "Note (aside) here",
   );
   expect(unescapeMarkdownProse("Keep \\*emphasis\\*")).toBe("Keep *emphasis*");
+  expect(unescapeMarkdownProse("2\\+2 equals 4")).toBe("2+2 equals 4");
 });
 
 test("runPipeline unescapes markdown prose as final step", () => {

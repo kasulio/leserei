@@ -5,7 +5,7 @@ export function escapeMarkdown(text: string): string {
 
 /** Remove backslash escapes that are unnecessary in prose markdown output. */
 export function unescapeMarkdownProse(text: string): string {
-  return text.replace(/\\([!()*])/g, "$1");
+  return text.replace(/\\([!()*+])/g, "$1");
 }
 
 export function headingPrefix(level: number): string {
@@ -31,12 +31,16 @@ export function isSceneBreakLine(line: string): boolean {
   return false;
 }
 
+export function isListItemLine(line: string): boolean {
+  return /^(\t|(> )+)*(\+ |\d+\. )/.test(line);
+}
+
 export function isMarkdownStructural(line: string): boolean {
   if (line === "") return true;
   if (isSceneBreakLine(line)) return true;
   if (/^#{1,6}\s/.test(line)) return true;
   if (/^>\s?/.test(line)) return true;
-  if (/^(\+ |\d+\. )/.test(line)) return true;
+  if (isListItemLine(line)) return true;
   if (/^ {4}/.test(line)) return true;
   return false;
 }
@@ -45,6 +49,7 @@ export function isMarkdownStructural(line: string): boolean {
 export const PARAGRAPH_END_RE = /[.!?:)\]"'»…\u2026\u201D\u2019]$/u;
 
 export function needsParagraphGap(prev: string, next: string): boolean {
+  if (isListItemLine(prev) && isListItemLine(next)) return false;
   if (isMarkdownStructural(prev)) return true;
   if (PARAGRAPH_END_RE.test(prev)) return true;
   if (/^[A-Z]/u.test(next)) return true;

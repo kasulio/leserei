@@ -50,7 +50,8 @@ function hasNestedBlockElements(el: Element): boolean {
     if (node.nodeType !== Node.ELEMENT_NODE) continue;
     const tag = tagName(node as Element);
     // <br> is inline-ish; extract via extractInline/extractPlainText, not walk()
-    if (BLOCK_TAGS.has(tag) || tag === "hr") return true;
+    if (BLOCK_TAGS.has(tag) || tag === "ul" || tag === "ol" || tag === "hr")
+      return true;
   }
   return false;
 }
@@ -286,7 +287,7 @@ function extractPlainText(el: Element): string {
   let text = "";
   for (const node of Array.from(el.childNodes)) {
     if (node.nodeType === Node.TEXT_NODE) {
-      text += node.textContent ?? "";
+      text += (node.textContent ?? "").replace(/\s+/g, " ");
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       const child = node as Element;
       const tag = tagName(child);

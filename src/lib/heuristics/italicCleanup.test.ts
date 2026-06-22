@@ -70,11 +70,6 @@ test("spaces multiple glued spans on one line", () => {
 });
 
 test("spaces emphasis after glued punctuation", () => {
-  const result = italicCleanup(
-    book(['the final toast.* "To my brave brothers!*']),
-    opts,
-  );
-  expect(result.chapters[0]!.lines[0]!).toBe(
-    'the final toast. *"To my brave brothers!*',
-  );
+  const result = italicCleanup(book(['She paused.* "Hello there!*']), opts);
+  expect(result.chapters[0]!.lines[0]!).toBe('She paused. *"Hello there!*');
 });

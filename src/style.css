@@ -163,7 +163,6 @@ body {
 
 .editor-field {
   width: 100%;
-  min-height: 100%;
   resize: none;
   border: none;
   background: transparent;

@@ -47,7 +47,67 @@ test("markdown: unordered list", () => {
     "markdown",
   );
 
-  expect(book.chapters[0]!.lines).toEqual(["+ One", "", "+ Two"]);
+  expect(book.chapters[0]!.lines).toEqual(["+ One", "+ Two"]);
+});
+
+test("markdown: list with li>p and wrapper div", () => {
+  const book = extractBook(
+    spine(`<html><body>
+      <div class="liste_ungeordnet"><ul class="listtype_dash">
+        <li class="firstincontainer2"><p class="firstinsequence">First list item.</p></li>
+        <li class="firstincontainer2"><p class="firstinsequence">Second list item.</p></li>
+        <li class="firstincontainer2"><p class="firstinsequence"><span class="origpage" epub:type="pagebreak" title="20"></span>Third list item.</p></li>
+      </ul></div>
+    </body></html>`),
+    "",
+    "markdown",
+  );
+
+  expect(book.chapters[0]!.lines).toEqual([
+    "+ First list item.",
+    "+ Second list item.",
+    "+ Third list item.",
+  ]);
+});
+
+test("markdown: wrapped dash list with pagebreak spans", () => {
+  const book = extractBook(
+    spine(`<html><body>
+      <div class="liste_ungeordnet"><ul class="listtype_dash">
+        <li class="firstincontainer2"><p class="firstinsequence">Alpha item.</p></li>
+        <li class="firstincontainer2"><p class="firstinsequence">Beta item with extra words.</p></li>
+        <li class="firstincontainer2"><p class="firstinsequence"><span aria-hidden="true" class="origpage" epub:type="pagebreak" id="origpage_20" role="doc-pagebreak" title="20"></span>Gamma item after page break.</p></li>
+        <li class="firstincontainer2"><p class="firstinsequence">Delta item (parenthetical aside.)</p></li>
+        <li class="firstincontainer2"><p class="firstinsequence">Epsilon item (maybe).</p></li>
+      </ul></div>
+    </body></html>`),
+    "",
+    "markdown",
+  );
+
+  expect(book.chapters[0]!.lines).toEqual([
+    "+ Alpha item.",
+    "+ Beta item with extra words.",
+    "+ Gamma item after page break.",
+    "+ Delta item \\(parenthetical aside.\\)",
+    "+ Epsilon item \\(maybe\\).",
+  ]);
+});
+
+test("markdown: plus sign in prose is not escaped after pipeline", () => {
+  const book = extractBook(
+    spine(`<html><body><p>2+2 equals 4.</p></body></html>`),
+    "",
+    "markdown",
+  );
+  expect(book.chapters[0]!.lines[0]).toBe("2\\+2 equals 4.");
+
+  const processed = runPipeline(
+    book,
+    PRESETS.find((p) => p.id === "reading")!.options,
+    "markdown",
+  );
+  expect(processed.chapters[0]!.lines[0]).toBe("2+2 equals 4.");
 });
 
 test("markdown: external link", () => {
@@ -171,6 +231,20 @@ test("plain: p with br keeps line breaks", () => {
   expect(book.chapters[0]!.lines[0]!).toBe("Line1\nLine2");
 });
 
+test("plain: collapses source newlines inside p", () => {
+  const book = extractBook(
+    spine(
+      `<html><body><p>The quick brown fox\njumps over the lazy dog.</p></body></html>`,
+    ),
+    "",
+    "plain",
+  );
+
+  expect(book.chapters[0]!.lines[0]!).toBe(
+    "The quick brown fox jumps over the lazy dog.",
+  );
+});
+
 test("plain: strips formatting", () => {
   const book = extractBook(
     spine(`<html><body><p><em>italic</em> text</p></body></html>`),
@@ -253,7 +327,7 @@ test("processed preset preserves scene break text", () => {
 test("processed preset spaces emphasis after punctuation", () => {
   const book = extractBook(
     spine(
-      `<html><body><p>the final toast.<i class="calibre5"> "To my brave brothers!</i></p></body></html>`,
+      `<html><body><p>She paused.<i class="calibre5"> "Hello there!</i></p></body></html>`,
     ),
     "",
     "markdown",
@@ -264,7 +338,5 @@ test("processed preset spaces emphasis after punctuation", () => {
     PRESETS.find((p) => p.id === "processed")!.options,
     "markdown",
   );
-  expect(result.chapters[0]!.lines[0]!).toBe(
-    'the final toast. *"To my brave brothers!*',
-  );
+  expect(result.chapters[0]!.lines[0]!).toBe('She paused. *"Hello there!*');
 });
