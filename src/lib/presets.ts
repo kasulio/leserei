@@ -12,6 +12,9 @@ const LIGHT: Options = {
   italicCleanup: false,
   dehyphenate: false,
   unwrap: false,
+  stripInvisible: false,
+  removeFrontMatter: false,
+  maxBlankLines: 2,
 };
 
 const READING: Options = {
@@ -19,6 +22,9 @@ const READING: Options = {
   italicCleanup: false,
   dehyphenate: true,
   unwrap: true,
+  stripInvisible: true,
+  removeFrontMatter: false,
+  maxBlankLines: 2,
 };
 
 const FULL: Options = {
@@ -26,6 +32,9 @@ const FULL: Options = {
   italicCleanup: true,
   dehyphenate: true,
   unwrap: true,
+  stripInvisible: true,
+  removeFrontMatter: false,
+  maxBlankLines: 2,
 };
 
 export const PRESETS: Preset[] = [

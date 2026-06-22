@@ -3,6 +3,13 @@ import JSZip from "jszip";
 export interface SpineItem {
   href: string; // path relative to OPF directory
   content: string; // raw XHTML string
+  linear: boolean;
+  properties: string[];
+}
+
+interface ManifestEntry {
+  href: string;
+  properties: string[];
 }
 
 export async function loadEpub(file: File): Promise<SpineItem[]> {
@@ -18,15 +25,21 @@ export async function loadEpub(file: File): Promise<SpineItem[]> {
 
   // 2. Parse OPF — manifest + spine
   const opfXml = await requireEntry(zip, opfPath);
-  const hrefs = parseSpineHrefs(opfXml, opfDir);
+  const spineEntries = parseSpineEntries(opfXml, opfDir);
 
   // 3. Load each spine item
   const items: SpineItem[] = [];
-  for (const href of hrefs) {
-    const entry = zip.file(href) ?? zip.file(decodeURIComponent(href));
-    if (!entry) continue;
-    const content = await entry.async("string");
-    items.push({ href, content });
+  for (const entry of spineEntries) {
+    const zipEntry =
+      zip.file(entry.href) ?? zip.file(decodeURIComponent(entry.href));
+    if (!zipEntry) continue;
+    const content = await zipEntry.async("string");
+    items.push({
+      href: entry.href,
+      content,
+      linear: entry.linear,
+      properties: entry.properties,
+    });
   }
   return items;
 }
@@ -45,11 +58,13 @@ function parseOpfPath(containerXml: string): string {
   return path;
 }
 
-function parseSpineHrefs(opfXml: string, opfDir: string): string[] {
+function parseSpineEntries(
+  opfXml: string,
+  opfDir: string,
+): Array<{ href: string; linear: boolean; properties: string[] }> {
   const doc = new DOMParser().parseFromString(opfXml, "application/xml");
 
-  // Build id -> href map from manifest
-  const manifestMap = new Map<string, string>();
+  const manifestMap = new Map<string, ManifestEntry>();
   doc.querySelectorAll("manifest item").forEach((item) => {
     const id = item.getAttribute("id");
     const href = item.getAttribute("href");
@@ -59,18 +74,29 @@ function parseSpineHrefs(opfXml: string, opfDir: string): string[] {
       href &&
       (mt.includes("xhtml") || mt.includes("html") || href.match(/\.x?html?$/i))
     ) {
-      manifestMap.set(id, opfDir + href);
+      const properties = (item.getAttribute("properties") ?? "")
+        .split(/\s+/)
+        .filter(Boolean);
+      manifestMap.set(id, { href: opfDir + href, properties });
     }
   });
 
-  // Ordered spine
-  const hrefs: string[] = [];
+  const entries: Array<{
+    href: string;
+    linear: boolean;
+    properties: string[];
+  }> = [];
   doc.querySelectorAll("spine itemref").forEach((ref) => {
     const idref = ref.getAttribute("idref");
-    if (idref && manifestMap.has(idref)) {
-      hrefs.push(manifestMap.get(idref)!);
-    }
+    const linear = ref.getAttribute("linear") !== "no";
+    if (!idref || !manifestMap.has(idref)) return;
+    const manifest = manifestMap.get(idref)!;
+    entries.push({
+      href: manifest.href,
+      linear,
+      properties: manifest.properties,
+    });
   });
 
-  return hrefs;
+  return entries;
 }

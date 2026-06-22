@@ -1,7 +1,7 @@
 import { mreplace } from "../mreplace";
 import type { Book, Options } from "../types";
 
-const MAX_BLANK_LINES = 3;
+export const DEFAULT_MAX_BLANK_LINES = 4;
 
 // Calibre-compatible set (entities + Unicode literals).
 const CALIBRE: Record<string, string> = {
@@ -120,7 +120,7 @@ function transformLine(line: string): string {
   );
 }
 
-function cleanLines(lines: string[]): string[] {
+function cleanLines(lines: string[], maxBlankLines: number): string[] {
   const trimmed = lines.map((l) => {
     const t = l.trimEnd().replace(/ {2,}/g, " ");
     return t.trim() === "" ? "" : t;
@@ -131,7 +131,7 @@ function cleanLines(lines: string[]): string[] {
   for (const line of trimmed) {
     if (line === "") {
       blanks++;
-      if (blanks <= MAX_BLANK_LINES) result.push("");
+      if (blanks <= maxBlankLines) result.push("");
     } else {
       blanks = 0;
       result.push(line);
@@ -144,12 +144,16 @@ function cleanLines(lines: string[]): string[] {
   return result;
 }
 
-export function normalize(book: Book, _opts: Options): Book {
+export function normalize(book: Book, opts: Options): Book {
+  const maxBlankLines = Math.max(
+    0,
+    opts.maxBlankLines ?? DEFAULT_MAX_BLANK_LINES,
+  );
   return {
     ...book,
     chapters: book.chapters.map((ch) => ({
       ...ch,
-      lines: cleanLines(ch.lines.map(transformLine)),
+      lines: cleanLines(ch.lines.map(transformLine), maxBlankLines),
     })),
   };
 }

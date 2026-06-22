@@ -1,6 +1,7 @@
 import { dehyphenate } from "./heuristics/dehyphenate";
 import { italicCleanup } from "./heuristics/italicCleanup";
 import { normalize } from "./heuristics/normalize";
+import { stripInvisible } from "./heuristics/stripInvisible";
 import { unescapeMarkdown } from "./heuristics/unescapeMarkdown";
 import { unwrap } from "./heuristics/unwrap";
 import { PRESETS } from "./presets";
@@ -14,6 +15,7 @@ import type {
 
 const PIPELINE: Array<{ id: StepId; fn: TransformStep }> = [
   { id: "normalize", fn: normalize },
+  { id: "stripInvisible", fn: stripInvisible },
   { id: "italicCleanup", fn: italicCleanup },
   { id: "dehyphenate", fn: dehyphenate },
   { id: "unwrap", fn: unwrap },
@@ -23,6 +25,18 @@ const PIPELINE: Array<{ id: StepId; fn: TransformStep }> = [
 export const CHAPTER_GAP = "\n\n\n";
 
 export const CHAPTER_SEPARATOR = `${CHAPTER_GAP}* * *${CHAPTER_GAP}`;
+
+/** Max consecutive newline characters between content (2 = one blank line). */
+export function collapseExcessNewlines(
+  text: string,
+  maxBlankLines: number,
+): string {
+  if (maxBlankLines < 0) return text;
+  const maxRun = maxBlankLines === 0 ? 1 : maxBlankLines * 2;
+  return text.replace(/\n+/g, (run) =>
+    run.length <= maxRun ? run : "\n".repeat(maxRun),
+  );
+}
 
 export function defaultOptions(): Options {
   return { ...PRESETS.find((p) => p.id === "reading")!.options };
@@ -69,14 +83,22 @@ export function joinOutputLines(lines: string[]): string {
 export function bookToText(
   book: Book,
   format: OutputFormat = "markdown",
+  opts?: Pick<Options, "normalize" | "maxBlankLines">,
 ): string {
+  let text: string;
   if (format === "markdown") {
-    return book.chapters
+    text = book.chapters
       .map((ch) => joinOutputLines(ch.lines))
       .join(CHAPTER_GAP);
+  } else {
+    text = book.chapters
+      .map((ch) => joinOutputLines(ch.lines))
+      .join(CHAPTER_SEPARATOR);
   }
 
-  return book.chapters
-    .map((ch) => joinOutputLines(ch.lines))
-    .join(CHAPTER_SEPARATOR);
+  if (opts?.normalize) {
+    text = collapseExcessNewlines(text, opts.maxBlankLines);
+  }
+
+  return text;
 }

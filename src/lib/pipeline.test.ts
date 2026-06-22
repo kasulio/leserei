@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 
-import { bookToText } from "./pipeline";
-import type { Book } from "./types";
+import { bookToText, collapseExcessNewlines } from "./pipeline";
+import type { Book, Options } from "./types";
 
 const markdownBook: Book = {
   title: "T",
@@ -53,4 +53,18 @@ test("bookToText plain adds extra blank lines from consecutive empties", () => {
     chapters: [{ title: "", lines: ["Para A", "", "", "Para B"] }],
   };
   expect(bookToText(b, "plain")).toBe("Para A\n\n\nPara B");
+});
+
+test("collapseExcessNewlines caps visible blank lines", () => {
+  expect(collapseExcessNewlines("a\n\n\n\nb", 1)).toBe("a\n\nb");
+  expect(collapseExcessNewlines("a\n\n\n\nb", 2)).toBe("a\n\n\n\nb");
+});
+
+test("bookToText applies maxBlankLines when normalize is on", () => {
+  const b: Book = {
+    title: "",
+    chapters: [{ title: "", lines: ["Para A", "", "", "Para B"] }],
+  };
+  const opts = { normalize: true, maxBlankLines: 1 } as Options;
+  expect(bookToText(b, "markdown", opts)).toBe("Para A\n\nPara B");
 });

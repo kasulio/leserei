@@ -5,8 +5,16 @@ import { extractBook } from "./extract";
 import { bookToText, runPipeline } from "./pipeline";
 import { PRESETS } from "./presets";
 
-function spine(html: string): SpineItem[] {
-  return [{ href: "ch1.xhtml", content: html }];
+function spine(html: string, overrides: Partial<SpineItem> = {}): SpineItem[] {
+  return [
+    {
+      href: "ch1.xhtml",
+      content: html,
+      linear: true,
+      properties: [],
+      ...overrides,
+    },
+  ];
 }
 
 test("markdown: headings, emphasis, scene break", () => {

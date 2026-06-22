@@ -15,8 +15,12 @@ export interface Options {
   italicCleanup: boolean;
   dehyphenate: boolean;
   unwrap: boolean;
+  stripInvisible: boolean;
+  removeFrontMatter: boolean;
+  /** Max consecutive blank lines per chapter (normalize step). */
+  maxBlankLines: number;
 }
 
-export type StepId = keyof Options;
+export type StepId = Exclude<keyof Options, "maxBlankLines">;
 
 export type TransformStep = (book: Book, opts: Options) => Book;

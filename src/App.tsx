@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { loadEpub, type SpineItem } from "./lib/epub";
 import { extractBook } from "./lib/extract";
+import { filterSpine } from "./lib/frontMatter";
 import { bookToText, defaultOptions, runPipeline } from "./lib/pipeline";
 import { PRESETS } from "./lib/presets";
 import { STEP_UI } from "./lib/steps";
-import type { Book, Options, OutputFormat, StepId } from "./lib/types";
+import type { Options, OutputFormat, StepId } from "./lib/types";
 import { useTheme } from "./useTheme";
 
 function ThemeToggle() {
@@ -115,6 +116,7 @@ function ControlsPanel({
   activePreset,
   opts,
   onToggleStep,
+  onMaxBlankLinesChange,
   customizeOpen,
   onCustomizeOpenChange,
   onDownload,
@@ -127,6 +129,7 @@ function ControlsPanel({
   activePreset: (typeof PRESETS)[number];
   opts: Options;
   onToggleStep: (id: StepId) => void;
+  onMaxBlankLinesChange: (value: number) => void;
   customizeOpen: boolean;
   onCustomizeOpenChange: (open: boolean) => void;
   onDownload: () => void;
@@ -213,6 +216,27 @@ function ControlsPanel({
                 onToggle={onToggleStep}
               />
             ))}
+            {opts.normalize && (
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
+                <label htmlFor="max-blank-lines" className="field-label">
+                  Max blank lines
+                </label>
+                <input
+                  id="max-blank-lines"
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={opts.maxBlankLines}
+                  onChange={(e) =>
+                    onMaxBlankLinesChange(Number(e.target.value))
+                  }
+                  className="select-field mt-1"
+                />
+                <p className="field-hint">
+                  Collapse longer runs of empty lines while cleaning
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -225,7 +249,6 @@ function ControlsPanel({
 }
 
 export function App() {
-  const [book, setBook] = useState<Book | null>(null);
   const [filename, setFilename] = useState("");
   const [presetId, setPresetId] = useState("reading");
   const [opts, setOpts] = useState<Options>(defaultOptions);
@@ -239,15 +262,20 @@ export function App() {
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [editedText, setEditedText] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!spine) return;
-    setBook(extractBook(spine, filename, outputFormat));
-  }, [spine, filename, outputFormat]);
+  const displaySpine = useMemo(() => {
+    if (!spine) return null;
+    return filterSpine(spine, opts.removeFrontMatter);
+  }, [spine, opts.removeFrontMatter]);
+
+  const book = useMemo(() => {
+    if (!displaySpine) return null;
+    return extractBook(displaySpine, filename, outputFormat);
+  }, [displaySpine, filename, outputFormat]);
 
   const processedText = useMemo(() => {
     if (!book) return null;
     const result = runPipeline(book, opts, outputFormat);
-    return bookToText(result, outputFormat);
+    return bookToText(result, outputFormat, opts);
   }, [book, opts, outputFormat]);
 
   const displayText = editedText ?? processedText ?? "";
@@ -323,6 +351,20 @@ export function App() {
         setEditedText(null);
         setPresetId("custom");
         setOpts((prev) => ({ ...prev, [id]: !prev[id] }));
+        if (id === "removeFrontMatter") setSourceIndex(0);
+      });
+    },
+    [withEditGuard],
+  );
+
+  const handleMaxBlankLinesChange = useCallback(
+    (value: number) => {
+      if (!Number.isFinite(value)) return;
+      const clamped = Math.min(10, Math.max(0, Math.round(value)));
+      withEditGuard(() => {
+        setEditedText(null);
+        setPresetId("custom");
+        setOpts((prev) => ({ ...prev, maxBlankLines: clamped }));
       });
     },
     [withEditGuard],
@@ -352,7 +394,7 @@ export function App() {
     URL.revokeObjectURL(url);
   }, [displayText, filename]);
 
-  const sourceHtml = spine?.[sourceIndex] ?? null;
+  const sourceHtml = displaySpine?.[sourceIndex] ?? null;
   const activePreset =
     presetId === "custom"
       ? PRESETS.find((p) => p.id === "custom")!
@@ -360,8 +402,8 @@ export function App() {
 
   const previewMeta =
     previewMode === "output"
-      ? `${book?.chapters.length ?? 0} chapters · ${displayText.length.toLocaleString()} chars${hasEdits ? " · edited" : ""}`
-      : `${spine?.length ?? 0} files · ${sourceHtml?.content.length.toLocaleString() ?? 0} chars`;
+      ? `${book?.chapters.length ?? 0} chapters · ${displayText.length.toLocaleString()} chars${hasEdits ? " · edited" : ""}${opts.removeFrontMatter ? " · front matter skipped" : ""}`
+      : `${displaySpine?.length ?? 0} files · ${sourceHtml?.content.length.toLocaleString() ?? 0} chars`;
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] transition-colors duration-150">
@@ -381,7 +423,7 @@ export function App() {
       </header>
 
       <main
-        className={`mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 ${book ? "pb-36 lg:pb-8" : ""}`}
+        className={`mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 ${spine ? "pb-36 lg:pb-8" : ""}`}
       >
         <label
           className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
@@ -408,7 +450,7 @@ export function App() {
             <span className="animate-pulse text-[var(--text-muted)] text-sm">
               Opening book…
             </span>
-          ) : book ? (
+          ) : spine ? (
             <span className="text-center text-[var(--text-muted)] text-sm">
               <span className="font-medium text-[var(--text)]">
                 {filename}.epub
@@ -452,7 +494,7 @@ export function App() {
           </p>
         )}
 
-        {book && (
+        {spine && (
           <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[15rem_1fr] lg:gap-8">
             <aside className="hidden lg:block">
               <ControlsPanel
@@ -463,6 +505,7 @@ export function App() {
                 activePreset={activePreset}
                 opts={opts}
                 onToggleStep={toggleStep}
+                onMaxBlankLinesChange={handleMaxBlankLinesChange}
                 customizeOpen={customizeOpen}
                 onCustomizeOpenChange={setCustomizeOpen}
                 onDownload={download}
@@ -503,25 +546,27 @@ export function App() {
                 </div>
               </div>
 
-              {previewMode === "html" && spine && spine.length > 0 && (
-                <div className="mb-3">
-                  <label htmlFor="chapter-file" className="field-label">
-                    Chapter file
-                  </label>
-                  <select
-                    id="chapter-file"
-                    value={sourceIndex}
-                    onChange={(e) => setSourceIndex(Number(e.target.value))}
-                    className="select-field text-xs"
-                  >
-                    {spine.map((item, i) => (
-                      <option key={item.href} value={i}>
-                        {item.href}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              {previewMode === "html" &&
+                displaySpine &&
+                displaySpine.length > 0 && (
+                  <div className="mb-3">
+                    <label htmlFor="chapter-file" className="field-label">
+                      Chapter file
+                    </label>
+                    <select
+                      id="chapter-file"
+                      value={sourceIndex}
+                      onChange={(e) => setSourceIndex(Number(e.target.value))}
+                      className="select-field text-xs"
+                    >
+                      {displaySpine.map((item, i) => (
+                        <option key={item.href} value={i}>
+                          {item.href}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
               <div
                 className="min-h-[50vh] flex-1 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm leading-relaxed lg:max-h-[calc(100vh-14rem)] lg:min-h-[calc(100vh-14rem)]"
@@ -556,6 +601,7 @@ export function App() {
             activePreset={activePreset}
             opts={opts}
             onToggleStep={toggleStep}
+            onMaxBlankLinesChange={handleMaxBlankLinesChange}
             customizeOpen={customizeOpen}
             onCustomizeOpenChange={setCustomizeOpen}
             onDownload={download}

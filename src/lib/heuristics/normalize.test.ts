@@ -1,13 +1,13 @@
 import { expect, test } from "bun:test";
 
 import type { Book, Options } from "../types";
-import { normalize } from "./normalize";
+import { DEFAULT_MAX_BLANK_LINES, normalize } from "./normalize";
 
 function book(lines: string[]): Book {
   return { title: "", chapters: [{ title: "", lines }] };
 }
 
-const opts = {} as Options;
+const opts = { maxBlankLines: DEFAULT_MAX_BLANK_LINES } as Options;
 
 test("smart double quotes -> straight", () => {
   const result = normalize(book(["\u201CHello\u201D"]), opts);
@@ -98,6 +98,14 @@ test("preserves up to 2 consecutive blank lines", () => {
 test("caps runs of blank lines at 2", () => {
   const result = normalize(book(["a", "", "", "", "", "b"]), opts);
   expect(result.chapters[0]!.lines).toEqual(["a", "", "", "b"]);
+});
+
+test("respects custom maxBlankLines", () => {
+  const result = normalize(book(["a", "", "", "", "b"]), {
+    ...opts,
+    maxBlankLines: 1,
+  });
+  expect(result.chapters[0]!.lines).toEqual(["a", "", "b"]);
 });
 
 test("treats whitespace-only lines as blank", () => {
